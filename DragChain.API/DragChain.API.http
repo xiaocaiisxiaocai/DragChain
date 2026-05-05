@@ -1,0 +1,6 @@
+@DragChain.API_HostAddress = http://localhost:5256
+
+GET {{DragChain.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
