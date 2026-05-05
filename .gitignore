@@ -5,6 +5,9 @@ obj/
 *.suo
 .vs/
 *.lock
+*.db
+*.db-shm
+*.db-wal
 
 # Node
 node_modules/
@@ -14,6 +17,7 @@ dist/
 # IDE
 .idea/
 .vscode/
+.cursor/
 *.swp
 *.swo
 
@@ -23,3 +27,4 @@ Thumbs.db
 
 # Misc
 *.bak
+*.html
