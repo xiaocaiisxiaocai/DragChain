@@ -21,8 +21,25 @@ public class PipeLibraryController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<PipeType>>> GetAll()
     {
-        return await _context.PipeTypes.OrderBy(p => p.Id).ToListAsync();
+        var pipes = await _context.PipeTypes.ToListAsync();
+        return pipes
+            .OrderBy(GetTypeSort)
+            .ThenBy(p => p.Diameter)
+            .ThenBy(p => p.Weight)
+            .ThenBy(p => p.BendMultiplier)
+            .ThenBy(p => p.Name)
+            .ThenBy(p => p.Id)
+            .ToList();
     }
+
+    private static int GetTypeSort(PipeType pipe) => pipe.Type switch
+    {
+        "weak_cable" => 10,
+        "encoder" => 20,
+        "strong_cable" => 30,
+        "tube" => 40,
+        _ => 90
+    };
 
     [HttpPost]
     public async Task<ActionResult<PipeType>> Create([FromBody] CreatePipeTypeDto dto)
@@ -32,7 +49,7 @@ public class PipeLibraryController : ControllerBase
         {
             Id = maxId + 1,
             Name = dto.Name,
-            Type = dto.Type,
+            Type = PipeTypeCategory.Normalize(dto.Type),
             Diameter = dto.Diameter,
             Weight = dto.Weight,
             BendMultiplier = dto.BendMultiplier
@@ -49,7 +66,7 @@ public class PipeLibraryController : ControllerBase
         if (pipe == null) return NotFound();
 
         if (dto.Name != null) pipe.Name = dto.Name;
-        if (dto.Type != null) pipe.Type = dto.Type;
+        if (dto.Type != null) pipe.Type = PipeTypeCategory.Normalize(dto.Type);
         if (dto.Diameter.HasValue) pipe.Diameter = dto.Diameter.Value;
         if (dto.Weight.HasValue) pipe.Weight = dto.Weight.Value;
         if (dto.BendMultiplier.HasValue) pipe.BendMultiplier = dto.BendMultiplier.Value;
@@ -63,6 +80,10 @@ public class PipeLibraryController : ControllerBase
     {
         var pipe = await _context.PipeTypes.FindAsync(id);
         if (pipe == null) return NotFound();
+
+        var usedByModule = await _context.PipeModuleItems.AnyAsync(item => item.PipeTypeId == id);
+        if (usedByModule) return Conflict("该管线已被模块引用，请先调整模块内容。");
+
         _context.PipeTypes.Remove(pipe);
         await _context.SaveChangesAsync();
         return NoContent();

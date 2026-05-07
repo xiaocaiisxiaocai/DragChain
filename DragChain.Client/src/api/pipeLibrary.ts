@@ -9,18 +9,12 @@ export interface CreatePipeType {
   bendMultiplier: number;
 }
 
-export interface UpdatePipeType {
-  name?: string;
-  type?: string;
-  diameter?: number;
-  weight?: number;
-  bendMultiplier?: number;
-}
+export type UpdatePipeType = Partial<CreatePipeType>;
 
 export const pipeLibraryApi = {
   getAll: () => client.get<PipeType[]>('/PipeLibrary'),
   create: (dto: CreatePipeType) => client.post<PipeType>('/PipeLibrary', dto),
   update: (id: number, dto: UpdatePipeType) => client.put<PipeType>(`/PipeLibrary/${id}`, dto),
   delete: (id: number) => client.del<void>(`/PipeLibrary/${id}`),
-  reset: () => client.post<{ message: string }>('/PipeLibrary/reset'),
+  reset: () => client.post<{ message: string }>('/PipeLibrary/reset')
 };

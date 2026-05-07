@@ -28,6 +28,11 @@ namespace DragChain.API.Data.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("FunctionSelect")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
                     b.Property<decimal>("InnerArea")
                         .HasColumnType("decimal(10,2)");
 
@@ -48,6 +53,11 @@ namespace DragChain.API.Data.Migrations
 
                     b.Property<decimal>("MaxWeight")
                         .HasColumnType("decimal(10,2)");
+
+                    b.Property<string>("MountingH1")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
 
                     b.Property<decimal>("R1")
                         .HasColumnType("decimal(8,2)");
@@ -84,6 +94,53 @@ namespace DragChain.API.Data.Migrations
                     b.HasIndex("BaseModel");
 
                     b.ToTable("MeCatalog");
+                });
+
+            modelBuilder.Entity("DragChain.API.Models.PipeModule", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name");
+
+                    b.ToTable("PipeModules");
+                });
+
+            modelBuilder.Entity("DragChain.API.Models.PipeModuleItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PipeModuleId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PipeTypeId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Qty")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PipeModuleId");
+
+                    b.HasIndex("PipeTypeId");
+
+                    b.ToTable("PipeModuleItems");
                 });
 
             modelBuilder.Entity("DragChain.API.Models.PipeType", b =>
@@ -132,25 +189,9 @@ namespace DragChain.API.Data.Migrations
                     b.Property<decimal>("Height")
                         .HasColumnType("decimal(8,2)");
 
-                    b.Property<decimal>("InnerHeight")
-                        .HasColumnType("decimal(8,2)");
-
-                    b.Property<decimal>("InnerWidth")
-                        .HasColumnType("decimal(8,2)");
-
-                    b.Property<string>("Material")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("Model")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Remarks")
-                        .IsRequired()
-                        .HasMaxLength(200)
                         .HasColumnType("TEXT");
 
                     b.Property<decimal>("Width")
@@ -233,6 +274,30 @@ namespace DragChain.API.Data.Migrations
                     b.HasIndex("Model");
 
                     b.ToTable("WzlCatalog");
+                });
+
+            modelBuilder.Entity("DragChain.API.Models.PipeModuleItem", b =>
+                {
+                    b.HasOne("DragChain.API.Models.PipeModule", "PipeModule")
+                        .WithMany("Items")
+                        .HasForeignKey("PipeModuleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DragChain.API.Models.PipeType", "PipeType")
+                        .WithMany()
+                        .HasForeignKey("PipeTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("PipeModule");
+
+                    b.Navigation("PipeType");
+                });
+
+            modelBuilder.Entity("DragChain.API.Models.PipeModule", b =>
+                {
+                    b.Navigation("Items");
                 });
 #pragma warning restore 612, 618
         }

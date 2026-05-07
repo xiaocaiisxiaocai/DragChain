@@ -32,11 +32,13 @@ public class MeController : ControllerBase
         {
             Id = maxId + 1,
             BaseModel = dto.BaseModel,
+            FunctionSelect = dto.FunctionSelect,
             InnerHeight = dto.InnerHeight,
             InnerWidth = dto.InnerWidth,
             R1 = dto.R1, R2 = dto.R2, R3 = dto.R3,
             R1Suffix = dto.R1Suffix, R2Suffix = dto.R2Suffix, R3Suffix = dto.R3Suffix,
             Lp1 = dto.Lp1, Lp2 = dto.Lp2, Lp3 = dto.Lp3,
+            MountingH1 = dto.MountingH1,
             InnerArea = dto.InnerArea,
             MaxWeight = dto.MaxWeight,
             SpanBase = dto.SpanBase,
@@ -54,6 +56,7 @@ public class MeController : ControllerBase
         if (me == null) return NotFound();
 
         if (dto.BaseModel != null) me.BaseModel = dto.BaseModel;
+        if (dto.FunctionSelect != null) me.FunctionSelect = dto.FunctionSelect;
         if (dto.InnerHeight.HasValue) me.InnerHeight = dto.InnerHeight.Value;
         if (dto.InnerWidth.HasValue) me.InnerWidth = dto.InnerWidth.Value;
         if (dto.R1.HasValue) me.R1 = dto.R1.Value;
@@ -65,6 +68,7 @@ public class MeController : ControllerBase
         if (dto.Lp1.HasValue) me.Lp1 = dto.Lp1.Value;
         if (dto.Lp2.HasValue) me.Lp2 = dto.Lp2.Value;
         if (dto.Lp3.HasValue) me.Lp3 = dto.Lp3.Value;
+        if (dto.MountingH1 != null) me.MountingH1 = dto.MountingH1;
         if (dto.InnerArea.HasValue) me.InnerArea = dto.InnerArea.Value;
         if (dto.MaxWeight.HasValue) me.MaxWeight = dto.MaxWeight.Value;
         if (dto.SpanBase.HasValue) me.SpanBase = dto.SpanBase.Value;

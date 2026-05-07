@@ -10,7 +10,7 @@ public class CreatePipeTypeDto
 
     [Required]
     [MaxLength(20)]
-    public string Type { get; set; } = "cable";
+    public string Type { get; set; } = "weak_cable";
 
     public decimal Diameter { get; set; }
 

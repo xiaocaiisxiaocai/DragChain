@@ -21,13 +21,24 @@ public class TrunkingController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<TrunkingCatalog>>> GetAll()
+    public async Task<ActionResult<IEnumerable<TrunkingCatalogDto>>> GetAll()
     {
-        return await _context.TrunkingCatalog.OrderBy(t => t.Id).ToListAsync();
+        var rows = await _context.TrunkingCatalog
+            .OrderBy(t => t.Id)
+            .Select(t => new TrunkingCatalogDto
+            {
+                Id = t.Id,
+                Model = t.Model,
+                Width = t.Width,
+                Height = t.Height,
+                CrossSection = t.CrossSection
+            })
+            .ToListAsync();
+        return rows;
     }
 
     [HttpPost]
-    public async Task<ActionResult<TrunkingCatalog>> Create([FromBody] CreateTrunkingCatalogDto dto)
+    public async Task<ActionResult<TrunkingCatalogDto>> Create([FromBody] CreateTrunkingCatalogDto dto)
     {
         var maxId = await _context.TrunkingCatalog.MaxAsync(t => (int?)t.Id) ?? 0;
         var tk = new TrunkingCatalog
@@ -36,15 +47,18 @@ public class TrunkingController : ControllerBase
             Model = dto.Model,
             Width = dto.Width,
             Height = dto.Height,
-            InnerWidth = dto.InnerWidth,
-            InnerHeight = dto.InnerHeight,
-            CrossSection = dto.CrossSection,
-            Material = dto.Material,
-            Remarks = dto.Remarks
+            CrossSection = dto.CrossSection
         };
         _context.TrunkingCatalog.Add(tk);
         await _context.SaveChangesAsync();
-        return CreatedAtAction(nameof(GetAll), tk);
+        return CreatedAtAction(nameof(GetAll), new TrunkingCatalogDto
+        {
+            Id = tk.Id,
+            Model = tk.Model,
+            Width = tk.Width,
+            Height = tk.Height,
+            CrossSection = tk.CrossSection
+        });
     }
 
     [HttpPut("{id}")]
@@ -56,11 +70,7 @@ public class TrunkingController : ControllerBase
         tk.Model = dto.Model;
         tk.Width = dto.Width;
         tk.Height = dto.Height;
-        tk.InnerWidth = dto.InnerWidth;
-        tk.InnerHeight = dto.InnerHeight;
         tk.CrossSection = dto.CrossSection;
-        tk.Material = dto.Material;
-        tk.Remarks = dto.Remarks;
 
         await _context.SaveChangesAsync();
         return NoContent();

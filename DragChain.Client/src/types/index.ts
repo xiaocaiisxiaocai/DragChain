@@ -2,21 +2,49 @@
 export interface PipeType {
   id: number;
   name: string;
-  type: 'tube' | 'cable' | 'encoder' | 'other';
+  type: 'tube' | 'weak_cable' | 'strong_cable' | 'cable' | 'encoder' | 'other';
   diameter: number;
   weight: number;
   bendMultiplier: number;
 }
 
 // 活动管线（管线清单）
-export interface ActivePipe {
-  libId: number;
+export interface ActivePipeBase {
+  kind?: 'pipe' | 'module';
   qty: number;
+}
+
+export interface ActivePipeItem extends ActivePipeBase {
+  kind?: 'pipe';
+  libId: number;
   name?: string;
   type?: string;
   diameter?: number;
   weight?: number;
   bendMultiplier?: number;
+}
+
+export interface ActivePipeModule extends ActivePipeBase {
+  kind: 'module';
+  moduleId: number;
+}
+
+export type ActivePipe = ActivePipeItem | ActivePipeModule;
+
+// 管线模块
+export interface PipeModuleItem {
+  id: number;
+  moduleId: number;
+  pipeTypeId: number;
+  qty: number;
+  pipeType?: PipeType;
+}
+
+export interface PipeModule {
+  id: number;
+  name: string;
+  description: string;
+  items: PipeModuleItem[];
 }
 
 // WZL 型录
@@ -43,6 +71,7 @@ export interface WzlCatalog {
 export interface MeCatalog {
   id: number;
   baseModel: string;
+  functionSelect: string;
   innerHeight: number;
   innerWidth: number;
   r1: number;
@@ -54,6 +83,7 @@ export interface MeCatalog {
   lp1: number;
   lp2: number;
   lp3: number;
+  mountingH1: string;
   innerArea: number;
   maxWeight: number;
   spanBase: number;
@@ -125,11 +155,7 @@ export interface TrunkingCatalog {
   model: string;
   width: number;
   height: number;
-  innerWidth: number;
-  innerHeight: number;
   crossSection: number;
-  material: string;
-  remarks: string;
 }
 
 // 线槽计算请求
@@ -157,9 +183,37 @@ export interface TrunkingCalcResponse {
   maxPipeDia: number;
   totalPipeCount: number;
   selectedTrunking: TrunkingCatalog | null;
+  matchResults: TrunkingMatchResult[];
+  weakSide: TrunkingSideResult | null;
+  strongSide: TrunkingSideResult | null;
   steps: TrunkingSteps;
   resultStatus: 'ok' | 'warn' | 'err';
   resultMessage: string;
+}
+
+export interface TrunkingSideResult {
+  key: 'weak' | 'strong';
+  label: string;
+  totalArea: number;
+  actualFillRatio: number;
+  maxPipeDia: number;
+  totalPipeCount: number;
+  selectedTrunking: TrunkingCatalog | null;
+  matchResults: TrunkingMatchResult[];
+  resultStatus: 'ok' | 'warn' | 'err';
+  resultMessage: string;
+}
+
+export interface TrunkingMatchResult {
+  id: number;
+  model: string;
+  width: number;
+  height: number;
+  crossSection: number;
+  actualFillRatio: number;
+  okFill: boolean;
+  isRecommended: boolean;
+  result: string;
 }
 
 // 计算响应

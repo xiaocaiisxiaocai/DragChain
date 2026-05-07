@@ -18,9 +18,39 @@ public class TrunkingCalcResponse
     public int TotalPipeCount { get; set; }
 
     public TrunkingCatalogDto? SelectedTrunking { get; set; }
+    public List<TrunkingMatchResultDto> MatchResults { get; set; } = new();
+    public TrunkingSideResultDto? WeakSide { get; set; }
+    public TrunkingSideResultDto? StrongSide { get; set; }
     public TrunkingStepsDto Steps { get; set; } = new();
     public string ResultStatus { get; set; } = string.Empty;
     public string ResultMessage { get; set; } = string.Empty;
+}
+
+public class TrunkingSideResultDto
+{
+    public string Key { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public decimal TotalArea { get; set; }
+    public decimal ActualFillRatio { get; set; }
+    public decimal MaxPipeDia { get; set; }
+    public int TotalPipeCount { get; set; }
+    public TrunkingCatalogDto? SelectedTrunking { get; set; }
+    public List<TrunkingMatchResultDto> MatchResults { get; set; } = new();
+    public string ResultStatus { get; set; } = string.Empty;
+    public string ResultMessage { get; set; } = string.Empty;
+}
+
+public class TrunkingMatchResultDto
+{
+    public int Id { get; set; }
+    public string Model { get; set; } = string.Empty;
+    public decimal Width { get; set; }
+    public decimal Height { get; set; }
+    public decimal CrossSection { get; set; }
+    public decimal ActualFillRatio { get; set; }
+    public bool OkFill { get; set; }
+    public bool IsRecommended { get; set; }
+    public string Result { get; set; } = string.Empty;
 }
 
 public class TrunkingCatalogDto
@@ -29,11 +59,7 @@ public class TrunkingCatalogDto
     public string Model { get; set; } = string.Empty;
     public decimal Width { get; set; }
     public decimal Height { get; set; }
-    public decimal InnerWidth { get; set; }
-    public decimal InnerHeight { get; set; }
     public decimal CrossSection { get; set; }
-    public string Material { get; set; } = string.Empty;
-    public string Remarks { get; set; } = string.Empty;
 }
 
 public class TrunkingStepsDto
@@ -54,15 +80,7 @@ public class CreateTrunkingCatalogDto
 
     public decimal Width { get; set; }
     public decimal Height { get; set; }
-    public decimal InnerWidth { get; set; }
-    public decimal InnerHeight { get; set; }
     public decimal CrossSection { get; set; }
-
-    [MaxLength(50)]
-    public string Material { get; set; } = string.Empty;
-
-    [MaxLength(200)]
-    public string Remarks { get; set; } = string.Empty;
 }
 
 public class UpdateTrunkingCatalogDto
@@ -73,13 +91,5 @@ public class UpdateTrunkingCatalogDto
 
     public decimal Width { get; set; }
     public decimal Height { get; set; }
-    public decimal InnerWidth { get; set; }
-    public decimal InnerHeight { get; set; }
     public decimal CrossSection { get; set; }
-
-    [MaxLength(50)]
-    public string Material { get; set; } = string.Empty;
-
-    [MaxLength(200)]
-    public string Remarks { get; set; } = string.Empty;
 }

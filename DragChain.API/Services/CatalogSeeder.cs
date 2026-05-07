@@ -8,23 +8,21 @@ public static class CatalogSeeder
 {
     private static readonly List<PipeType> DefaultPipeTypes = new()
     {
-        new PipeType { Id = 1,  Name = "感應器信號電纜 Φ6",    Type = "cable",   Diameter = 6.0m,   Weight = 0.0600m,  BendMultiplier = 8 },
-        new PipeType { Id = 2,  Name = "感應器信號電纜 Φ10",   Type = "cable",   Diameter = 10.0m,  Weight = 0.1500m,  BendMultiplier = 8 },
-        new PipeType { Id = 3,  Name = "感應器信號電纜 Φ13",   Type = "cable",   Diameter = 13.0m,  Weight = 0.2400m,  BendMultiplier = 8 },
-        new PipeType { Id = 4,  Name = "台達伺服電源線 Φ9",     Type = "cable",   Diameter = 9.0m,   Weight = 0.1000m,  BendMultiplier = 8 },
-        new PipeType { Id = 5,  Name = "匯川伺服電源線 Φ6.5",  Type = "cable",   Diameter = 6.5m,   Weight = 0.0800m,  BendMultiplier = 8 },
-        new PipeType { Id = 6,  Name = "SMC電動缸電源線 Φ6.5", Type = "cable",   Diameter = 6.5m,   Weight = 0.0800m,  BendMultiplier = 8 },
+        new PipeType { Id = 1,  Name = "感應器信號電纜 Φ6",    Type = "weak_cable",   Diameter = 6.0m,   Weight = 0.0600m,  BendMultiplier = 8 },
+        new PipeType { Id = 2,  Name = "感應器信號電纜 Φ10",   Type = "weak_cable",   Diameter = 10.0m,  Weight = 0.1500m,  BendMultiplier = 8 },
+        new PipeType { Id = 3,  Name = "感應器信號電纜 Φ13",   Type = "weak_cable",   Diameter = 13.0m,  Weight = 0.2400m,  BendMultiplier = 8 },
+        new PipeType { Id = 4,  Name = "台達伺服電源線 Φ9",     Type = "strong_cable", Diameter = 9.0m,   Weight = 0.1000m,  BendMultiplier = 8 },
+        new PipeType { Id = 5,  Name = "匯川伺服電源線 Φ6.5",  Type = "strong_cable", Diameter = 6.5m,   Weight = 0.0800m,  BendMultiplier = 8 },
+        new PipeType { Id = 6,  Name = "SMC電動缸電源線 Φ6.5", Type = "strong_cable", Diameter = 6.5m,   Weight = 0.0800m,  BendMultiplier = 8 },
         new PipeType { Id = 7,  Name = "伺服編碼器線 Φ6",       Type = "encoder", Diameter = 6.0m,   Weight = 0.0600m,  BendMultiplier = 13 },
         new PipeType { Id = 8,  Name = "SMC電動缸信號線 Φ6",  Type = "encoder", Diameter = 6.0m,   Weight = 0.0600m,  BendMultiplier = 13 },
-        new PipeType { Id = 9,  Name = "EtherCAT通信線 Φ6",   Type = "cable",   Diameter = 6.0m,   Weight = 0.0550m,  BendMultiplier = 8 },
-        new PipeType { Id = 10, Name = "DeviceNet總線 Φ8",     Type = "cable",   Diameter = 8.0m,   Weight = 0.0900m,  BendMultiplier = 8 },
+        new PipeType { Id = 9,  Name = "EtherCAT通信線 Φ6",   Type = "weak_cable",   Diameter = 6.0m,   Weight = 0.0550m,  BendMultiplier = 8 },
+        new PipeType { Id = 10, Name = "DeviceNet總線 Φ8",     Type = "weak_cable",   Diameter = 8.0m,   Weight = 0.0900m,  BendMultiplier = 8 },
         new PipeType { Id = 11, Name = "氣管 Φ4",              Type = "tube",    Diameter = 4.0m,   Weight = 0.0080m,  BendMultiplier = 8 },
         new PipeType { Id = 12, Name = "氣管 Φ6",              Type = "tube",    Diameter = 6.0m,   Weight = 0.0193m,  BendMultiplier = 8 },
         new PipeType { Id = 13, Name = "氣管 Φ8",              Type = "tube",    Diameter = 8.0m,   Weight = 0.0366m,  BendMultiplier = 8 },
         new PipeType { Id = 14, Name = "氣管 Φ10",             Type = "tube",    Diameter = 10.0m,  Weight = 0.0544m,  BendMultiplier = 8 },
         new PipeType { Id = 15, Name = "氣管 Φ12",             Type = "tube",    Diameter = 12.0m,  Weight = 0.0756m,  BendMultiplier = 8 },
-        new PipeType { Id = 16, Name = "水管 Φ10",             Type = "tube",    Diameter = 10.0m,  Weight = 0.1200m,  BendMultiplier = 8 },
-        new PipeType { Id = 17, Name = "水管 Φ16",             Type = "tube",    Diameter = 16.0m,  Weight = 0.2200m,  BendMultiplier = 8 },
     };
 
     private static readonly List<WzlCatalog> DefaultWzlCatalog = new()
@@ -104,15 +102,15 @@ public static class CatalogSeeder
 
     private static readonly List<TrunkingCatalog> DefaultTrunkingCatalog = new()
     {
-        new TrunkingCatalog { Model = "TK-25×25",  Width = 25,  Height = 25,  InnerWidth = 25,  InnerHeight = 25,  CrossSection = 625,   Material = "鋁合金", Remarks = "小型機櫃內部布線" },
-        new TrunkingCatalog { Model = "TK-40×25",  Width = 40,  Height = 25,  InnerWidth = 40,  InnerHeight = 25,  CrossSection = 1000,  Material = "鋁合金", Remarks = "標準小型線槽" },
-        new TrunkingCatalog { Model = "TK-40×40",  Width = 40,  Height = 40,  InnerWidth = 40,  InnerHeight = 40,  CrossSection = 1600,  Material = "鋁合金", Remarks = "中等容量線槽" },
-        new TrunkingCatalog { Model = "TK-60×40",  Width = 60,  Height = 40,  InnerWidth = 60,  InnerHeight = 40,  CrossSection = 2400,  Material = "鋁合金", Remarks = "較大機櫃布線" },
-        new TrunkingCatalog { Model = "TK-60×60",  Width = 60,  Height = 60,  InnerWidth = 60,  InnerHeight = 60,  CrossSection = 3600,  Material = "鋁合金", Remarks = "大截面線槽" },
-        new TrunkingCatalog { Model = "TK-80×40",  Width = 80,  Height = 40,  InnerWidth = 80,  InnerHeight = 40,  CrossSection = 3200,  Material = "鋁合金", Remarks = "寬型低高度線槽" },
-        new TrunkingCatalog { Model = "TK-80×60",  Width = 80,  Height = 60,  InnerWidth = 80,  InnerHeight = 60,  CrossSection = 4800,  Material = "鋁合金", Remarks = "寬型大截面線槽" },
-        new TrunkingCatalog { Model = "TK-100×60", Width = 100, Height = 60,  InnerWidth = 100, InnerHeight = 60,  CrossSection = 6000,  Material = "鋁合金", Remarks = "大型配電櫃布線" },
-        new TrunkingCatalog { Model = "TK-100×100", Width = 100, Height = 100, InnerWidth = 100, InnerHeight = 100, CrossSection = 10000, Material = "鋁合金", Remarks = "超大型線槽" },
+        new TrunkingCatalog { Model = "TK-25×25",  Width = 25,  Height = 25,  CrossSection = 625 },
+        new TrunkingCatalog { Model = "TK-40×25",  Width = 40,  Height = 25,  CrossSection = 1000 },
+        new TrunkingCatalog { Model = "TK-40×40",  Width = 40,  Height = 40,  CrossSection = 1600 },
+        new TrunkingCatalog { Model = "TK-60×40",  Width = 60,  Height = 40,  CrossSection = 2400 },
+        new TrunkingCatalog { Model = "TK-60×60",  Width = 60,  Height = 60,  CrossSection = 3600 },
+        new TrunkingCatalog { Model = "TK-80×40",  Width = 80,  Height = 40,  CrossSection = 3200 },
+        new TrunkingCatalog { Model = "TK-80×60",  Width = 80,  Height = 60,  CrossSection = 4800 },
+        new TrunkingCatalog { Model = "TK-100×60", Width = 100, Height = 60,  CrossSection = 6000 },
+        new TrunkingCatalog { Model = "TK-100×100", Width = 100, Height = 100, CrossSection = 10000 },
     };
 
     public static (List<PipeType> pipeTypes, List<WzlCatalog> wzlCatalog, List<MeCatalog> meCatalog,
@@ -123,10 +121,16 @@ public static class CatalogSeeder
 
     public static async Task SeedAsync(DragChainDbContext context)
     {
+        await RemoveWaterPipeTypesAsync(context);
+
         if (!await context.PipeTypes.AnyAsync())
         {
             foreach (var p in DefaultPipeTypes)
                 context.PipeTypes.Add(p);
+        }
+        else
+        {
+            await NormalizePipeTypeCategoriesAsync(context);
         }
 
         if (!await context.WzlCatalog.AnyAsync())
@@ -160,6 +164,43 @@ public static class CatalogSeeder
         }
 
         await context.SaveChangesAsync();
+    }
+
+    private static async Task RemoveWaterPipeTypesAsync(DragChainDbContext context)
+    {
+        var waterPipes = await context.PipeTypes
+            .Where(p => p.Type == "water" || p.Name.Contains("水管"))
+            .ToListAsync();
+
+        context.PipeTypes.RemoveRange(waterPipes);
+
+        if (waterPipes.Count > 0)
+            await context.SaveChangesAsync();
+    }
+
+    private static async Task NormalizePipeTypeCategoriesAsync(DragChainDbContext context)
+    {
+        var pipes = await context.PipeTypes.ToListAsync();
+        var changed = false;
+
+        foreach (var pipe in pipes)
+        {
+            var normalized = pipe.Type == "cable" ? InferCableCategory(pipe.Name) : PipeTypeCategory.Normalize(pipe.Type);
+            if (pipe.Type == normalized) continue;
+
+            pipe.Type = normalized;
+            changed = true;
+        }
+
+        if (changed)
+            await context.SaveChangesAsync();
+    }
+
+    private static string InferCableCategory(string name)
+    {
+        return name.Contains("電源") || name.Contains("电源")
+            ? PipeTypeCategory.StrongCable
+            : PipeTypeCategory.WeakCable;
     }
 
     public static async Task ResetAsync(DragChainDbContext context)

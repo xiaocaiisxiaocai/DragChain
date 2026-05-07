@@ -8,6 +8,9 @@ public class CreateMeCatalogDto
     [MaxLength(50)]
     public string BaseModel { get; set; } = string.Empty;
 
+    [MaxLength(50)]
+    public string FunctionSelect { get; set; } = string.Empty;
+
     public decimal InnerHeight { get; set; }
     public decimal InnerWidth { get; set; }
     public decimal R1 { get; set; }
@@ -26,6 +29,8 @@ public class CreateMeCatalogDto
     public decimal Lp1 { get; set; }
     public decimal Lp2 { get; set; }
     public decimal Lp3 { get; set; }
+    [MaxLength(50)]
+    public string MountingH1 { get; set; } = string.Empty;
     public decimal InnerArea { get; set; }
     public decimal MaxWeight { get; set; }
     public decimal SpanBase { get; set; }
@@ -36,6 +41,9 @@ public class UpdateMeCatalogDto
 {
     [MaxLength(50)]
     public string? BaseModel { get; set; }
+
+    [MaxLength(50)]
+    public string? FunctionSelect { get; set; }
 
     public decimal? InnerHeight { get; set; }
     public decimal? InnerWidth { get; set; }
@@ -55,6 +63,8 @@ public class UpdateMeCatalogDto
     public decimal? Lp1 { get; set; }
     public decimal? Lp2 { get; set; }
     public decimal? Lp3 { get; set; }
+    [MaxLength(50)]
+    public string? MountingH1 { get; set; }
     public decimal? InnerArea { get; set; }
     public decimal? MaxWeight { get; set; }
     public decimal? SpanBase { get; set; }

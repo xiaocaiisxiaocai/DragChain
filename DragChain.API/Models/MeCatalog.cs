@@ -13,6 +13,9 @@ public class MeCatalog
     [MaxLength(50)]
     public string BaseModel { get; set; } = string.Empty;
 
+    [MaxLength(50)]
+    public string FunctionSelect { get; set; } = string.Empty;
+
     [Column(TypeName = "decimal(8,2)")]
     public decimal InnerHeight { get; set; }
 
@@ -45,6 +48,9 @@ public class MeCatalog
 
     [Column(TypeName = "decimal(8,2)")]
     public decimal Lp3 { get; set; }
+
+    [MaxLength(50)]
+    public string MountingH1 { get; set; } = string.Empty;
 
     [Column(TypeName = "decimal(10,2)")]
     public decimal InnerArea { get; set; }

@@ -11,6 +11,8 @@ public class DragChainDbContext : DbContext
     public DbSet<WzlCatalog> WzlCatalog => Set<WzlCatalog>();
     public DbSet<MeCatalog> MeCatalog => Set<MeCatalog>();
     public DbSet<TrunkingCatalog> TrunkingCatalog => Set<TrunkingCatalog>();
+    public DbSet<PipeModule> PipeModules => Set<PipeModule>();
+    public DbSet<PipeModuleItem> PipeModuleItems => Set<PipeModuleItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -36,6 +38,25 @@ public class DragChainDbContext : DbContext
         modelBuilder.Entity<TrunkingCatalog>(entity =>
         {
             entity.HasIndex(e => e.Model);
+        });
+
+        modelBuilder.Entity<PipeModule>(entity =>
+        {
+            entity.HasIndex(e => e.Name);
+            entity.HasMany(e => e.Items)
+                .WithOne(e => e.PipeModule)
+                .HasForeignKey(e => e.PipeModuleId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PipeModuleItem>(entity =>
+        {
+            entity.HasIndex(e => e.PipeModuleId);
+            entity.HasIndex(e => e.PipeTypeId);
+            entity.HasOne(e => e.PipeType)
+                .WithMany()
+                .HasForeignKey(e => e.PipeTypeId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

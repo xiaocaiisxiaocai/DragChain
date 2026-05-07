@@ -15,7 +15,7 @@ public class PipeType
 
     [Required]
     [MaxLength(20)]
-    public string Type { get; set; } = "cable"; // tube / cable / encoder / other
+    public string Type { get; set; } = "weak_cable"; // tube / weak_cable / strong_cable / encoder / other
 
     [Column(TypeName = "decimal(8,2)")]
     public decimal Diameter { get; set; }
