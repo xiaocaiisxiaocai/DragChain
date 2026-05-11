@@ -62,6 +62,11 @@ public class TrunkingCatalogDto
     public decimal CrossSection { get; set; }
 }
 
+public class TrunkingSettingsDto
+{
+    public decimal FillRatio { get; set; } = 0.75m;
+}
+
 public class TrunkingStepsDto
 {
     public string Step1_TotalArea { get; set; } = string.Empty;

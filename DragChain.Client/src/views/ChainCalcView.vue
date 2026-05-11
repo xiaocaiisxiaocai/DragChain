@@ -79,7 +79,7 @@
                 <el-option label="升降" value="升降" />
               </el-select>
             </label>
-            <label>移动行程 (mm) <el-input-number v-model="stroke" :min="1" controls-position="right" /></label>
+            <label>移动行程 (mm) <el-input-number v-model="stroke" :min="0" controls-position="right" /></label>
             <label>固定端偏移 Lm (mm) <el-input-number v-model="lmOffset" :min="0" controls-position="right" /></label>
           </div>
         </el-card>
@@ -283,30 +283,25 @@ import type { ActivePipe, CalculationResponse } from '../types';
 import { expandSelectionToPipes } from '../utils/pipeSelection';
 import { createTrunkingSelectionRows } from '../utils/trunkingSelectionDisplay';
 
-const DEFAULT_WZL_PIPES = [
-  { kind: 'pipe' as const, libId: 1, qty: 1 }, { kind: 'pipe' as const, libId: 3, qty: 1 }, { kind: 'pipe' as const, libId: 4, qty: 2 },
-  { kind: 'pipe' as const, libId: 5, qty: 5 }, { kind: 'pipe' as const, libId: 7, qty: 7 }, { kind: 'pipe' as const, libId: 12, qty: 2 }, { kind: 'pipe' as const, libId: 14, qty: 2 }
-];
-const DEFAULT_ME_PIPES = [
-  { kind: 'pipe' as const, libId: 1, qty: 1 }, { kind: 'pipe' as const, libId: 2, qty: 1 }, { kind: 'pipe' as const, libId: 5, qty: 3 },
-  { kind: 'pipe' as const, libId: 7, qty: 3 }, { kind: 'pipe' as const, libId: 12, qty: 3 }, { kind: 'pipe' as const, libId: 14, qty: 2 }
-];
 const { pipeLib, pipeMap, loadPipeLib } = usePipeLibrary();
 const { pipeModules, moduleMap, loadPipeModules } = usePipeModules();
 const brand = ref<'wzl' | 'me'>('wzl');
-const sensorCount = ref(15);
+const sensorCount = ref(0);
 const magnetCount = ref(0);
 const motionType = ref<'横移' | '升降'>('横移');
-const stroke = ref(1000);
-const lmOffset = ref(50);
-const activePipes = ref<ActivePipe[]>([...DEFAULT_WZL_PIPES]);
+const stroke = ref(0);
+const lmOffset = ref(0);
+const activePipes = ref<ActivePipe[]>([]);
 const calcResult = ref<CalculationResponse | null>(null);
 const calcLoading = ref(false);
 const calcError = ref('');
 const showAddDialog = ref(false);
 
 const coreCount = computed(
-  () => sensorCount.value + Math.ceil(sensorCount.value / 3) * 2 + Math.ceil(magnetCount.value / 3) * 2 + 2
+  () => {
+    if (sensorCount.value <= 0 && magnetCount.value <= 0) return 0;
+    return sensorCount.value + Math.ceil(sensorCount.value / 3) * 2 + Math.ceil(magnetCount.value / 3) * 2 + 2;
+  }
 );
 
 const enrichedPipes = computed(() =>
@@ -345,9 +340,11 @@ const bendRows = computed(() => {
 });
 
 function handleBrandChange() {
-  activePipes.value = brand.value === 'wzl' ? [...DEFAULT_WZL_PIPES] : [...DEFAULT_ME_PIPES];
-  sensorCount.value = brand.value === 'wzl' ? 15 : 4;
-  stroke.value = brand.value === 'wzl' ? 1000 : 2300;
+  activePipes.value = [];
+  sensorCount.value = 0;
+  magnetCount.value = 0;
+  stroke.value = 0;
+  lmOffset.value = 0;
 }
 
 async function calculate() {

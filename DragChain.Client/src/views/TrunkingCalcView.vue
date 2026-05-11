@@ -6,8 +6,17 @@
           <template #header>选型参数</template>
           <div class="form-line">
             <span>填充率上限</span>
-            <el-input-number v-model="fillRatio" :min="1" :max="100" :step="1" controls-position="right" />
+            <el-input-number
+              v-model="fillRatio"
+              :min="1"
+              :max="100"
+              :step="1"
+              :disabled="settingsLoading"
+              controls-position="right"
+            />
             <span>%</span>
+            <el-text v-if="settingsSaving" size="small" type="info">保存中</el-text>
+            <el-text v-else-if="settingsSaved" size="small" type="success">已保存</el-text>
           </div>
         </el-card>
 
@@ -79,19 +88,19 @@
           <template v-else>
             <div class="ratio-row">
               <span>实际填充率</span>
-              <strong :class="result?.resultStatus === 'ok' ? 'ok-text' : 'danger-text'">
-                {{ result ? (result.actualFillRatio * 100).toFixed(1) : '0.0' }}%
+              <strong :class="displayResultStatus === 'ok' ? 'ok-text' : 'danger-text'">
+                {{ hasTrunkingPipes && result ? (result.actualFillRatio * 100).toFixed(1) : '0.0' }}%
               </strong>
             </div>
             <el-progress
-              :percentage="Math.min((result?.actualFillRatio || 0) * 100, 100)"
-              :status="result?.resultStatus === 'ok' ? 'success' : 'exception'"
+              :percentage="hasTrunkingPipes ? Math.min((result?.actualFillRatio || 0) * 100, 100) : 0"
+              :status="displayResultStatus === 'ok' ? 'success' : 'exception'"
               :stroke-width="18"
             />
-            <div class="conclusion-box" :class="result?.resultStatus || 'warn'">
-              <strong>{{ result?.resultMessage || '请选择线槽和管线' }}</strong>
-              <span v-if="result?.weakSide?.selectedTrunking">左侧弱电 {{ result.weakSide.selectedTrunking.model }} · 面积 {{ result.weakSide.selectedTrunking.crossSection }} mm²</span>
-              <span v-if="result?.strongSide?.selectedTrunking">右侧强电 {{ result.strongSide.selectedTrunking.model }} · 面积 {{ result.strongSide.selectedTrunking.crossSection }} mm²</span>
+            <div class="conclusion-box" :class="displayResultStatus">
+              <strong>{{ displayResultMessage }}</strong>
+              <span v-if="hasTrunkingPipes && result?.weakSide?.selectedTrunking">左侧弱电 {{ result.weakSide.selectedTrunking.model }} · 面积 {{ result.weakSide.selectedTrunking.crossSection }} mm²</span>
+              <span v-if="hasTrunkingPipes && result?.strongSide?.selectedTrunking">右侧强电 {{ result.strongSide.selectedTrunking.model }} · 面积 {{ result.strongSide.selectedTrunking.crossSection }} mm²</span>
             </div>
           </template>
         </el-card>
@@ -149,6 +158,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
+import { ElMessage } from 'element-plus';
 import AddPipeDialog from '../components/AddPipeDialog.vue';
 import MetricItem from '../widgets/MetricItem.vue';
 import PageShell from '../components/PageShell.vue';
@@ -159,21 +169,18 @@ import type { ActivePipe, TrunkingCalcResponse } from '../types';
 import { expandSelectionToPipes } from '../utils/pipeSelection';
 import { createTrunkingSelectionRows } from '../utils/trunkingSelectionDisplay';
 
-const DEFAULT_TRUNKING_PIPES = [
-  { kind: 'pipe' as const, libId: 1, qty: 1 },
-  { kind: 'pipe' as const, libId: 3, qty: 1 },
-  { kind: 'pipe' as const, libId: 5, qty: 3 },
-  { kind: 'pipe' as const, libId: 7, qty: 3 }
-];
 const TRUNKING_ALLOWED_TYPES = ['weak_cable', 'strong_cable', 'encoder'];
 
 const { pipeLib, loadPipeLib } = usePipeLibrary();
 const { pipeModules, loadPipeModules } = usePipeModules();
 const fillRatio = ref(75);
-const activePipes = ref<ActivePipe[]>([...DEFAULT_TRUNKING_PIPES]);
+const activePipes = ref<ActivePipe[]>([]);
 const result = ref<TrunkingCalcResponse | null>(null);
 const loading = ref(false);
 const error = ref('');
+const settingsLoading = ref(false);
+const settingsSaving = ref(false);
+const settingsSaved = ref(false);
 const showAddDialog = ref(false);
 
 const trunkingPipeLib = computed(() => pipeLib.value.filter(pipe => TRUNKING_ALLOWED_TYPES.includes(pipe.type)));
@@ -190,6 +197,9 @@ const trunkingActivePipes = computed(() => activePipes.value.filter(pipe => {
   return item ? TRUNKING_ALLOWED_TYPES.includes(item.type) : false;
 }));
 const enrichedPipes = computed(() => createTrunkingSelectionRows(trunkingActivePipes.value, pipeLib.value, trunkingModules.value));
+const hasTrunkingPipes = computed(() => trunkingActivePipes.value.some(pipe => pipe.qty > 0));
+const displayResultStatus = computed(() => (hasTrunkingPipes.value ? result.value?.resultStatus || 'warn' : 'warn'));
+const displayResultMessage = computed(() => (hasTrunkingPipes.value ? result.value?.resultMessage || '请选择线槽和管线' : '请填写管线清单'));
 const trunkingSides = computed(() => [
   { key: 'weak', title: '左侧弱电线槽', result: result.value?.weakSide || null },
   { key: 'strong', title: '右侧强电线槽', result: result.value?.strongSide || null }
@@ -208,6 +218,34 @@ async function calculate() {
     error.value = err instanceof Error ? err.message : '计算失败';
   } finally {
     loading.value = false;
+  }
+}
+
+async function loadSettings() {
+  settingsLoading.value = true;
+  try {
+    const settings = await trunkingApi.getSettings();
+    fillRatio.value = Math.round(settings.fillRatio * 100);
+  } catch (err) {
+    ElMessage.error(err instanceof Error ? err.message : '读取填充率上限失败');
+  } finally {
+    settingsLoading.value = false;
+  }
+}
+
+async function saveSettings() {
+  settingsSaving.value = true;
+  settingsSaved.value = false;
+  try {
+    await trunkingApi.updateSettings({ fillRatio: fillRatio.value / 100 });
+    settingsSaved.value = true;
+    window.setTimeout(() => {
+      settingsSaved.value = false;
+    }, 1600);
+  } catch (err) {
+    ElMessage.error(err instanceof Error ? err.message : '保存填充率上限失败');
+  } finally {
+    settingsSaving.value = false;
   }
 }
 
@@ -236,14 +274,24 @@ function addPipes(payload: { pipeIds: number[]; moduleIds: number[] }) {
   );
 }
 
-let timer = 0;
-watch([fillRatio, activePipes], () => {
-  window.clearTimeout(timer);
-  timer = window.setTimeout(calculate, 300);
+let calculateTimer = 0;
+let saveSettingsTimer = 0;
+
+watch(activePipes, () => {
+  window.clearTimeout(calculateTimer);
+  calculateTimer = window.setTimeout(calculate, 300);
 }, { deep: true });
 
+watch(fillRatio, () => {
+  window.clearTimeout(calculateTimer);
+  window.clearTimeout(saveSettingsTimer);
+  calculateTimer = window.setTimeout(calculate, 300);
+  // 输入框变化频繁，防抖后再持久化到数据库。
+  saveSettingsTimer = window.setTimeout(saveSettings, 600);
+});
+
 onMounted(async () => {
-  await Promise.all([loadPipeLib(), loadPipeModules()]);
+  await Promise.all([loadSettings(), loadPipeLib(), loadPipeModules()]);
   await calculate();
 });
 </script>

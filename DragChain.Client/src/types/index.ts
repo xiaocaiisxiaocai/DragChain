@@ -165,6 +165,10 @@ export interface TrunkingCalcRequest {
   fillRatio?: number;
 }
 
+export interface TrunkingSettings {
+  fillRatio: number;
+}
+
 // 线槽计算步骤
 export interface TrunkingSteps {
   step1_TotalArea: string;
