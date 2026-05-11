@@ -478,6 +478,10 @@ textarea {
   margin-bottom: 12px;
 }
 
+.pipe-picker-tabs .el-tabs__content {
+  padding-top: 10px;
+}
+
 .pipe-group {
   display: grid;
   gap: 8px;

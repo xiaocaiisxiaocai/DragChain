@@ -148,7 +148,7 @@
     <AddPipeDialog
       v-model="showAddDialog"
       :pipe-lib="trunkingPipeLib"
-      :pipe-modules="pipeModules"
+      :pipe-modules="trunkingModules"
       :active-pipes="activePipes"
       :allowed-types="TRUNKING_ALLOWED_TYPES"
       @confirm="addPipes"
@@ -165,8 +165,9 @@ import PageShell from '../components/PageShell.vue';
 import { trunkingApi } from '../api/trunking';
 import { usePipeLibrary } from '../composables/usePipeLibrary';
 import { usePipeModules } from '../composables/usePipeModules';
-import type { ActivePipe, TrunkingCalcResponse } from '../types';
+import type { ActivePipe, PipeType, TrunkingCalcResponse } from '../types';
 import { expandSelectionToPipes } from '../utils/pipeSelection';
+import { getPipeDisplayType } from '../utils/pipeType';
 import { createTrunkingSelectionRows } from '../utils/trunkingSelectionDisplay';
 
 const TRUNKING_ALLOWED_TYPES = ['weak_cable', 'strong_cable', 'encoder'];
@@ -183,18 +184,22 @@ const settingsSaving = ref(false);
 const settingsSaved = ref(false);
 const showAddDialog = ref(false);
 
-const trunkingPipeLib = computed(() => pipeLib.value.filter(pipe => TRUNKING_ALLOWED_TYPES.includes(pipe.type)));
+function isTrunkingPipe(pipe?: Pick<PipeType, 'name' | 'type'> | null) {
+  return pipe ? TRUNKING_ALLOWED_TYPES.includes(getPipeDisplayType(pipe)) : false;
+}
+
+const trunkingPipeLib = computed(() => pipeLib.value.filter(isTrunkingPipe));
 const trunkingModules = computed(() => pipeModules.value.map(module => ({
   ...module,
   items: module.items.filter(item => {
     const pipe = pipeLib.value.find(pipeItem => pipeItem.id === item.pipeTypeId) || item.pipeType;
-    return pipe ? TRUNKING_ALLOWED_TYPES.includes(pipe.type) : false;
+    return isTrunkingPipe(pipe);
   })
 })).filter(module => module.items.length > 0));
 const trunkingActivePipes = computed(() => activePipes.value.filter(pipe => {
   if (pipe.kind === 'module') return trunkingModules.value.some(module => module.id === pipe.moduleId);
   const item = pipeLib.value.find(pipeItem => pipeItem.id === pipe.libId);
-  return item ? TRUNKING_ALLOWED_TYPES.includes(item.type) : false;
+  return isTrunkingPipe(item);
 }));
 const enrichedPipes = computed(() => createTrunkingSelectionRows(trunkingActivePipes.value, pipeLib.value, trunkingModules.value));
 const hasTrunkingPipes = computed(() => trunkingActivePipes.value.some(pipe => pipe.qty > 0));

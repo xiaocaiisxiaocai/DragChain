@@ -13,15 +13,15 @@
       class="dialog-tip"
     />
 
-    <el-tabs v-model="activeTab">
+    <el-tabs v-model="activeTab" class="pipe-picker-tabs">
       <el-tab-pane label="管线" name="pipes">
         <el-checkbox-group v-model="selectedPipeIds">
-          <section v-for="group in groups" :key="group.key" class="pipe-group">
+          <section v-for="group in visibleGroups" :key="group.key" class="pipe-group">
             <div class="pipe-group-title">{{ group.label }}</div>
             <el-checkbox
               v-for="pipe in groupedPipes[group.key]"
               :key="pipe.id"
-              :label="pipe.id"
+              :value="pipe.id"
               :disabled="activePipeIdSet.has(pipe.id)"
               border
             >
@@ -39,7 +39,7 @@
             <el-checkbox
               v-for="module in pipeModules"
               :key="module.id"
-              :label="module.id"
+              :value="module.id"
               :disabled="activeModuleIdSet.has(module.id)"
               border
             >
@@ -107,6 +107,8 @@ const groupedPipes = computed(() =>
     {} as Record<string, PipeType[]>
   )
 );
+
+const visibleGroups = computed(() => groups.filter(group => groupedPipes.value[group.key].length > 0));
 
 function describeModule(module: PipeModule) {
   return module.items
