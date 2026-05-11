@@ -13,6 +13,9 @@ obj/
 node_modules/
 dist/
 *.log
+*.lscache
+publish/
+DragChain.API/wwwroot/
 
 # IDE
 .idea/

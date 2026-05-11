@@ -46,11 +46,16 @@ using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<DragChainDbContext>();
     context.Database.Migrate();
+    await SqliteSchemaCompatibility.EnsureAsync(context);
     await CatalogSeeder.SeedAsync(context);
 }
 
-// CORS
+// CORS：同站点部署时不需要跨域；开发环境保留 Vite 代理/直连兼容。
 app.UseCors("AllowFrontend");
+
+// IIS 单站点部署：后端同时托管前端构建产物（wwwroot）。
+app.UseDefaultFiles();
+app.UseStaticFiles();
 
 // Swagger
 app.UseSwagger();
@@ -63,5 +68,7 @@ app.MapControllers();
 
 // 健康检查
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok", timestamp = DateTime.UtcNow }));
+
+app.MapFallbackToFile("index.html");
 
 app.Run();
