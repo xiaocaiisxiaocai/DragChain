@@ -40,6 +40,7 @@
               <template #default="{ row }">
                 <div class="selection-name">
                   <el-tag v-if="row.kind === 'module'" size="small" type="warning">模块</el-tag>
+                  <el-tag v-else-if="row.kind === 'component'" size="small" type="success">元件</el-tag>
                   <el-tag v-else-if="row.kind === 'pipe'" size="small">管线</el-tag>
                   <span>{{ row.name }}</span>
                 </div>
@@ -265,6 +266,7 @@
       v-model="showAddDialog"
       :pipe-lib="pipeLib"
       :pipe-modules="pipeModules"
+      :pipe-components="pipeComponents"
       :active-pipes="activePipes"
       @confirm="addPipes"
     />
@@ -278,6 +280,7 @@ import MetricItem from '../widgets/MetricItem.vue';
 import PageShell from '../components/PageShell.vue';
 import { calculationApi } from '../api/calculation';
 import { usePipeLibrary } from '../composables/usePipeLibrary';
+import { usePipeComponents } from '../composables/usePipeComponents';
 import { usePipeModules } from '../composables/usePipeModules';
 import type { ActivePipe, CalculationResponse } from '../types';
 import { expandSelectionToPipes } from '../utils/pipeSelection';
@@ -285,6 +288,7 @@ import { createTrunkingSelectionRows } from '../utils/trunkingSelectionDisplay';
 
 const { pipeLib, pipeMap, loadPipeLib } = usePipeLibrary();
 const { pipeModules, moduleMap, loadPipeModules } = usePipeModules();
+const { pipeComponents, componentMap, loadPipeComponents } = usePipeComponents();
 const brand = ref<'wzl' | 'me'>('wzl');
 const sensorCount = ref(0);
 const magnetCount = ref(0);
@@ -305,7 +309,7 @@ const coreCount = computed(
 );
 
 const enrichedPipes = computed(() =>
-  createTrunkingSelectionRows(activePipes.value, pipeLib.value, pipeModules.value, { areaMode: 'circle' })
+  createTrunkingSelectionRows(activePipes.value, pipeLib.value, pipeModules.value, pipeComponents.value, { areaMode: 'circle' })
 );
 
 const maxBend = computed(() => {
@@ -316,6 +320,16 @@ const maxBend = computed(() => {
       module?.items.forEach(moduleItem => {
         const item = pipeMap.value[moduleItem.pipeTypeId] || moduleItem.pipeType;
         if (!item || !pipe.qty || !moduleItem.qty) return;
+        value = Math.max(value, item.diameter * item.bendMultiplier);
+      });
+      return;
+    }
+
+    if (pipe.kind === 'component') {
+      const component = componentMap.value[pipe.componentId];
+      component?.items.forEach(componentItem => {
+        const item = pipeMap.value[componentItem.pipeTypeId] || componentItem.pipeType;
+        if (!item || !pipe.qty || !componentItem.qty) return;
         value = Math.max(value, item.diameter * item.bendMultiplier);
       });
       return;
@@ -358,7 +372,7 @@ async function calculate() {
       motionType: motionType.value,
       stroke: stroke.value,
       lmOffset: lmOffset.value,
-      pipes: expandSelectionToPipes(activePipes.value, pipeModules.value)
+      pipes: expandSelectionToPipes(activePipes.value, pipeModules.value, pipeComponents.value)
     });
   } catch (err) {
     calcError.value = err instanceof Error ? err.message : '计算失败';
@@ -379,17 +393,25 @@ function selectionRowClass({ row }: { row: { kind?: string } }) {
   return row.kind === 'module-item' ? 'module-detail-row' : '';
 }
 
-function addPipes(payload: { pipeIds: number[]; moduleIds: number[] }) {
-  const existingPipeIds = new Set(activePipes.value.filter(pipe => pipe.kind !== 'module').map(pipe => pipe.libId));
+function addPipes(payload: { pipeIds: number[]; moduleIds: number[]; componentIds: number[] }) {
+  const existingPipeIds = new Set(activePipes.value.filter(isPipeSelection).map(pipe => pipe.libId));
   const existingModuleIds = new Set(activePipes.value.filter(pipe => pipe.kind === 'module').map(pipe => pipe.moduleId));
+  const existingComponentIds = new Set(activePipes.value.filter(pipe => pipe.kind === 'component').map(pipe => pipe.componentId));
   activePipes.value.push(
     ...payload.pipeIds
       .filter(id => !existingPipeIds.has(id))
       .map(id => ({ kind: 'pipe' as const, libId: id, qty: 1 })),
     ...payload.moduleIds
       .filter(id => !existingModuleIds.has(id))
-      .map(id => ({ kind: 'module' as const, moduleId: id, qty: 1 }))
+      .map(id => ({ kind: 'module' as const, moduleId: id, qty: 1 })),
+    ...payload.componentIds
+      .filter(id => !existingComponentIds.has(id))
+      .map(id => ({ kind: 'component' as const, componentId: id, qty: 1 }))
   );
+}
+
+function isPipeSelection(pipe: ActivePipe): pipe is Extract<ActivePipe, { kind?: 'pipe' }> {
+  return !pipe.kind || pipe.kind === 'pipe';
 }
 
 function matchRowClass({ row }: { row: { okFinal: boolean } }) {
@@ -403,7 +425,7 @@ watch([brand, sensorCount, magnetCount, motionType, stroke, lmOffset, activePipe
 }, { deep: true });
 
 onMounted(async () => {
-  await Promise.all([loadPipeLib(), loadPipeModules()]);
+  await Promise.all([loadPipeLib(), loadPipeModules(), loadPipeComponents()]);
   await calculate();
 });
 </script>

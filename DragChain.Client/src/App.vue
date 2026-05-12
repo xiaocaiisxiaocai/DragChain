@@ -42,6 +42,10 @@
               <el-icon><Collection /></el-icon>
               <template #title>模块库</template>
             </el-menu-item>
+            <el-menu-item index="/pipe-components">
+              <el-icon><Collection /></el-icon>
+              <template #title>元件库</template>
+            </el-menu-item>
           </el-menu>
         </el-scrollbar>
       </aside>
@@ -58,7 +62,11 @@
         </header>
 
         <section class="pure-content">
-          <router-view />
+          <router-view v-slot="{ Component }">
+            <keep-alive>
+              <component :is="Component" />
+            </keep-alive>
+          </router-view>
         </section>
       </main>
     </div>

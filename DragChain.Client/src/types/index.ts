@@ -10,7 +10,7 @@ export interface PipeType {
 
 // 活动管线（管线清单）
 export interface ActivePipeBase {
-  kind?: 'pipe' | 'module';
+  kind?: 'pipe' | 'module' | 'component';
   qty: number;
 }
 
@@ -29,7 +29,12 @@ export interface ActivePipeModule extends ActivePipeBase {
   moduleId: number;
 }
 
-export type ActivePipe = ActivePipeItem | ActivePipeModule;
+export interface ActivePipeComponent extends ActivePipeBase {
+  kind: 'component';
+  componentId: number;
+}
+
+export type ActivePipe = ActivePipeItem | ActivePipeModule | ActivePipeComponent;
 
 // 管线模块
 export interface PipeModuleItem {
@@ -45,6 +50,22 @@ export interface PipeModule {
   name: string;
   description: string;
   items: PipeModuleItem[];
+}
+
+// 管线元件
+export interface PipeComponentItem {
+  id: number;
+  componentId: number;
+  pipeTypeId: number;
+  qty: number;
+  pipeType?: PipeType;
+}
+
+export interface PipeComponent {
+  id: number;
+  name: string;
+  description: string;
+  items: PipeComponentItem[];
 }
 
 // WZL 型录

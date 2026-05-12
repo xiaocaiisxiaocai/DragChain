@@ -41,6 +41,7 @@
               <template #default="{ row }">
                 <div class="selection-name">
                   <el-tag v-if="row.kind === 'module'" size="small" type="warning">模块</el-tag>
+                  <el-tag v-else-if="row.kind === 'component'" size="small" type="success">元件</el-tag>
                   <el-tag v-else-if="row.typeLabel === '强电电缆'" size="small" type="danger">强电</el-tag>
                   <el-tag v-else-if="row.typeLabel === '弱电电缆'" size="small" type="primary">弱电</el-tag>
                   <el-tag v-else-if="row.typeLabel === '编码器'" size="small" type="warning">编码器</el-tag>
@@ -149,6 +150,7 @@
       v-model="showAddDialog"
       :pipe-lib="trunkingPipeLib"
       :pipe-modules="trunkingModules"
+      :pipe-components="trunkingComponents"
       :active-pipes="activePipes"
       :allowed-types="TRUNKING_ALLOWED_TYPES"
       @confirm="addPipes"
@@ -164,6 +166,7 @@ import MetricItem from '../widgets/MetricItem.vue';
 import PageShell from '../components/PageShell.vue';
 import { trunkingApi } from '../api/trunking';
 import { usePipeLibrary } from '../composables/usePipeLibrary';
+import { usePipeComponents } from '../composables/usePipeComponents';
 import { usePipeModules } from '../composables/usePipeModules';
 import type { ActivePipe, PipeType, TrunkingCalcResponse } from '../types';
 import { expandSelectionToPipes } from '../utils/pipeSelection';
@@ -174,6 +177,7 @@ const TRUNKING_ALLOWED_TYPES = ['weak_cable', 'strong_cable', 'encoder'];
 
 const { pipeLib, loadPipeLib } = usePipeLibrary();
 const { pipeModules, loadPipeModules } = usePipeModules();
+const { pipeComponents, loadPipeComponents } = usePipeComponents();
 const fillRatio = ref(75);
 const activePipes = ref<ActivePipe[]>([]);
 const result = ref<TrunkingCalcResponse | null>(null);
@@ -196,12 +200,20 @@ const trunkingModules = computed(() => pipeModules.value.map(module => ({
     return isTrunkingPipe(pipe);
   })
 })).filter(module => module.items.length > 0));
+const trunkingComponents = computed(() => pipeComponents.value.map(component => ({
+  ...component,
+  items: component.items.filter(item => {
+    const pipe = pipeLib.value.find(pipeItem => pipeItem.id === item.pipeTypeId) || item.pipeType;
+    return isTrunkingPipe(pipe);
+  })
+})).filter(component => component.items.length > 0));
 const trunkingActivePipes = computed(() => activePipes.value.filter(pipe => {
   if (pipe.kind === 'module') return trunkingModules.value.some(module => module.id === pipe.moduleId);
+  if (pipe.kind === 'component') return trunkingComponents.value.some(component => component.id === pipe.componentId);
   const item = pipeLib.value.find(pipeItem => pipeItem.id === pipe.libId);
   return isTrunkingPipe(item);
 }));
-const enrichedPipes = computed(() => createTrunkingSelectionRows(trunkingActivePipes.value, pipeLib.value, trunkingModules.value));
+const enrichedPipes = computed(() => createTrunkingSelectionRows(trunkingActivePipes.value, pipeLib.value, trunkingModules.value, trunkingComponents.value));
 const hasTrunkingPipes = computed(() => trunkingActivePipes.value.some(pipe => pipe.qty > 0));
 const displayResultStatus = computed(() => (hasTrunkingPipes.value ? result.value?.resultStatus || 'warn' : 'warn'));
 const displayResultMessage = computed(() => (hasTrunkingPipes.value ? result.value?.resultMessage || '请选择线槽和管线' : '请填写管线清单'));
@@ -217,7 +229,7 @@ async function calculate() {
     result.value = await trunkingApi.calculate({
       selectedTrunkingId: 0,
       fillRatio: fillRatio.value / 100,
-      pipes: expandSelectionToPipes(trunkingActivePipes.value, trunkingModules.value)
+      pipes: expandSelectionToPipes(trunkingActivePipes.value, trunkingModules.value, trunkingComponents.value)
     });
   } catch (err) {
     error.value = err instanceof Error ? err.message : '计算失败';
@@ -266,17 +278,25 @@ function selectionRowClass({ row }: { row: { kind?: string } }) {
   return row.kind === 'module-item' ? 'module-detail-row' : '';
 }
 
-function addPipes(payload: { pipeIds: number[]; moduleIds: number[] }) {
-  const existingPipeIds = new Set(activePipes.value.filter(pipe => pipe.kind !== 'module').map(pipe => pipe.libId));
+function addPipes(payload: { pipeIds: number[]; moduleIds: number[]; componentIds: number[] }) {
+  const existingPipeIds = new Set(activePipes.value.filter(isPipeSelection).map(pipe => pipe.libId));
   const existingModuleIds = new Set(activePipes.value.filter(pipe => pipe.kind === 'module').map(pipe => pipe.moduleId));
+  const existingComponentIds = new Set(activePipes.value.filter(pipe => pipe.kind === 'component').map(pipe => pipe.componentId));
   activePipes.value.push(
     ...payload.pipeIds
       .filter(id => !existingPipeIds.has(id))
       .map(id => ({ kind: 'pipe' as const, libId: id, qty: 1 })),
     ...payload.moduleIds
       .filter(id => !existingModuleIds.has(id))
-      .map(id => ({ kind: 'module' as const, moduleId: id, qty: 1 }))
+      .map(id => ({ kind: 'module' as const, moduleId: id, qty: 1 })),
+    ...payload.componentIds
+      .filter(id => !existingComponentIds.has(id))
+      .map(id => ({ kind: 'component' as const, componentId: id, qty: 1 }))
   );
+}
+
+function isPipeSelection(pipe: ActivePipe): pipe is Extract<ActivePipe, { kind?: 'pipe' }> {
+  return !pipe.kind || pipe.kind === 'pipe';
 }
 
 let calculateTimer = 0;
@@ -296,7 +316,7 @@ watch(fillRatio, () => {
 });
 
 onMounted(async () => {
-  await Promise.all([loadSettings(), loadPipeLib(), loadPipeModules()]);
+  await Promise.all([loadSettings(), loadPipeLib(), loadPipeModules(), loadPipeComponents()]);
   await calculate();
 });
 </script>

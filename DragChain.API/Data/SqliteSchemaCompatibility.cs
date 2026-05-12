@@ -9,6 +9,7 @@ public static class SqliteSchemaCompatibility
     {
         await EnsureMeCatalogColumnsAsync(context);
         await EnsureTrunkingCatalogShapeAsync(context);
+        await EnsurePipeComponentTablesAsync(context);
     }
 
     private static async Task EnsureMeCatalogColumnsAsync(DragChainDbContext context)
@@ -57,6 +58,29 @@ public static class SqliteSchemaCompatibility
             ALTER TABLE "__TrunkingCatalog_new" RENAME TO "TrunkingCatalog";
             CREATE INDEX "IX_TrunkingCatalog_Model" ON "TrunkingCatalog" ("Model");
             PRAGMA foreign_keys=ON;
+            """);
+    }
+
+    private static async Task EnsurePipeComponentTablesAsync(DragChainDbContext context)
+    {
+        // 元件库与模块库同构；老库升级时在启动阶段补齐独立表。
+        await context.Database.ExecuteSqlRawAsync("""
+            CREATE TABLE IF NOT EXISTS "PipeComponents" (
+                "Id" INTEGER NOT NULL CONSTRAINT "PK_PipeComponents" PRIMARY KEY AUTOINCREMENT,
+                "Name" TEXT NOT NULL,
+                "Description" TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS "PipeComponentItems" (
+                "Id" INTEGER NOT NULL CONSTRAINT "PK_PipeComponentItems" PRIMARY KEY AUTOINCREMENT,
+                "PipeComponentId" INTEGER NOT NULL,
+                "PipeTypeId" INTEGER NOT NULL,
+                "Qty" INTEGER NOT NULL,
+                CONSTRAINT "FK_PipeComponentItems_PipeComponents_PipeComponentId" FOREIGN KEY ("PipeComponentId") REFERENCES "PipeComponents" ("Id") ON DELETE CASCADE,
+                CONSTRAINT "FK_PipeComponentItems_PipeTypes_PipeTypeId" FOREIGN KEY ("PipeTypeId") REFERENCES "PipeTypes" ("Id") ON DELETE RESTRICT
+            );
+            CREATE INDEX IF NOT EXISTS "IX_PipeComponents_Name" ON "PipeComponents" ("Name");
+            CREATE INDEX IF NOT EXISTS "IX_PipeComponentItems_PipeComponentId" ON "PipeComponentItems" ("PipeComponentId");
+            CREATE INDEX IF NOT EXISTS "IX_PipeComponentItems_PipeTypeId" ON "PipeComponentItems" ("PipeTypeId");
             """);
     }
 

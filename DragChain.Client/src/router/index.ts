@@ -6,6 +6,7 @@ import WzlCatalogView from '../views/WzlCatalogView.vue';
 import MeCatalogView from '../views/MeCatalogView.vue';
 import PipeLibraryView from '../views/PipeLibraryView.vue';
 import PipeModuleView from '../views/PipeModuleView.vue';
+import PipeComponentView from '../views/PipeComponentView.vue';
 
 export const routes: RouteRecordRaw[] = [
   {
@@ -53,6 +54,12 @@ export const routes: RouteRecordRaw[] = [
     name: 'pipe-modules',
     component: PipeModuleView,
     meta: { title: '模块库', group: 'pipe' }
+  },
+  {
+    path: '/pipe-components',
+    name: 'pipe-components',
+    component: PipeComponentView,
+    meta: { title: '元件库', group: 'pipe' }
   }
 ];
 

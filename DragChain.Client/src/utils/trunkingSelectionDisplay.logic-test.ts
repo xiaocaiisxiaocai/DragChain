@@ -1,5 +1,5 @@
 import { createTrunkingSelectionRows } from './trunkingSelectionDisplay';
-import type { ActivePipe, PipeModule, PipeType } from '../types';
+import type { ActivePipe, PipeComponent, PipeModule, PipeType } from '../types';
 
 const pipeLib: PipeType[] = [
   { id: 1, name: '传感器信号电缆', type: 'weak_cable', diameter: 5, weight: 0.12, bendMultiplier: 8 },
@@ -9,7 +9,8 @@ const pipeLib: PipeType[] = [
 
 const activePipes: ActivePipe[] = [
   { kind: 'pipe', libId: 1, qty: 2 },
-  { kind: 'module', moduleId: 10, qty: 3 }
+  { kind: 'module', moduleId: 10, qty: 3 },
+  { kind: 'component', componentId: 20, qty: 2 }
 ];
 
 const modules: PipeModule[] = [
@@ -25,7 +26,19 @@ const modules: PipeModule[] = [
   }
 ];
 
-const rows = createTrunkingSelectionRows(activePipes, pipeLib, modules);
+const components: PipeComponent[] = [
+  {
+    id: 20,
+    name: '阀组元件',
+    description: '',
+    items: [
+      { id: 4, componentId: 20, pipeTypeId: 1, qty: 2 },
+      { id: 5, componentId: 20, pipeTypeId: 2, qty: 1 }
+    ]
+  }
+];
+
+const rows = createTrunkingSelectionRows(activePipes, pipeLib, modules, components);
 
 const singlePipe = rows[0];
 if (singlePipe.sizeText !== 'Φ5 mm' || singlePipe.areaText !== '50') {
@@ -53,7 +66,15 @@ if (moduleRow.children[2].typeLabel !== '气管' || moduleRow.children[2].sideLa
   throw new Error('模块子项必须显示气管和左侧');
 }
 
-const chainRows = createTrunkingSelectionRows(activePipes, pipeLib, modules, { areaMode: 'circle' });
-if (chainRows[0].areaText !== '39.3' || chainRows[1].areaText !== '706.9') {
+const componentRow = rows[2];
+if (componentRow.typeLabel !== '元件' || componentRow.sideLabel !== '混合') {
+  throw new Error('元件行必须显示类型和侧别');
+}
+if (componentRow.children.length !== 2 || componentRow.children[0].unitQtyText !== '2/元件' || componentRow.children[0].qty !== 4) {
+  throw new Error('元件展开详情必须显示子管线和展开后总数量');
+}
+
+const chainRows = createTrunkingSelectionRows(activePipes, pipeLib, modules, components, { areaMode: 'circle' });
+if (chainRows[0].areaText !== '39.3' || chainRows[1].areaText !== '706.9' || chainRows[2].areaText !== '235.6') {
   throw new Error('拖链清单面积必须按圆形截面积显示');
 }

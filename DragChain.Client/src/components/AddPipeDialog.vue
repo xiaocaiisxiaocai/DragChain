@@ -6,7 +6,7 @@
     destroy-on-close
   >
     <el-alert
-      title="已在当前清单中的管线或模块会自动禁用"
+      title="已在当前清单中的管线、模块或元件会自动禁用"
       type="info"
       :closable="false"
       show-icon
@@ -44,7 +44,25 @@
               border
             >
               <span class="pipe-option-name">{{ module.name }}</span>
-              <span class="pipe-option-meta">{{ describeModule(module) }}</span>
+              <span class="pipe-option-meta">{{ describeGroup(module) }}</span>
+            </el-checkbox>
+          </section>
+        </el-checkbox-group>
+      </el-tab-pane>
+
+      <el-tab-pane label="元件" name="components">
+        <el-checkbox-group v-model="selectedComponentIds">
+          <section class="pipe-group">
+            <el-empty v-if="!pipeComponents.length" description="暂无元件" />
+            <el-checkbox
+              v-for="component in pipeComponents"
+              :key="component.id"
+              :value="component.id"
+              :disabled="activeComponentIdSet.has(component.id)"
+              border
+            >
+              <span class="pipe-option-name">{{ component.name }}</span>
+              <span class="pipe-option-meta">{{ describeGroup(component) }}</span>
             </el-checkbox>
           </section>
         </el-checkbox-group>
@@ -60,24 +78,26 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import type { ActivePipe, PipeModule, PipeType } from '../types';
+import type { ActivePipe, PipeComponent, PipeModule, PipeType } from '../types';
 import { getPipeDisplayLabel, getPipeDisplayType } from '../utils/pipeType';
 
 const props = defineProps<{
   pipeLib: PipeType[];
   pipeModules: PipeModule[];
+  pipeComponents?: PipeComponent[];
   activePipes: ActivePipe[];
   allowedTypes?: string[];
 }>();
 
 const emit = defineEmits<{
-  confirm: [payload: { pipeIds: number[]; moduleIds: number[] }];
+  confirm: [payload: { pipeIds: number[]; moduleIds: number[]; componentIds: number[] }];
 }>();
 
 const visible = defineModel<boolean>({ required: true });
 const activeTab = ref('pipes');
 const selectedPipeIds = ref<number[]>([]);
 const selectedModuleIds = ref<number[]>([]);
+const selectedComponentIds = ref<number[]>([]);
 
 const groups = [
   { key: 'tube', label: '气管' },
@@ -88,12 +108,18 @@ const groups = [
 ];
 
 const activePipeIdSet = computed(() =>
-  new Set(props.activePipes.filter(pipe => pipe.kind !== 'module').map(pipe => pipe.libId))
+  new Set(props.activePipes.filter(isPipeSelection).map(pipe => pipe.libId))
 );
 
 const activeModuleIdSet = computed(() =>
   new Set(props.activePipes.filter(pipe => pipe.kind === 'module').map(pipe => pipe.moduleId))
 );
+
+const activeComponentIdSet = computed(() =>
+  new Set(props.activePipes.filter(pipe => pipe.kind === 'component').map(pipe => pipe.componentId))
+);
+
+const pipeComponents = computed(() => props.pipeComponents || []);
 
 const groupedPipes = computed(() =>
   groups.reduce(
@@ -110,8 +136,8 @@ const groupedPipes = computed(() =>
 
 const visibleGroups = computed(() => groups.filter(group => groupedPipes.value[group.key].length > 0));
 
-function describeModule(module: PipeModule) {
-  return module.items
+function describeGroup(group: PipeModule | PipeComponent) {
+  return group.items
     .map(item => {
       const pipe = item.pipeType || props.pipeLib.find(pipeItem => pipeItem.id === item.pipeTypeId);
       const name = pipe ? `${pipe.name}(${getPipeDisplayLabel(pipe)})` : `#${item.pipeTypeId}`;
@@ -120,13 +146,19 @@ function describeModule(module: PipeModule) {
     .join('，');
 }
 
+function isPipeSelection(pipe: ActivePipe): pipe is Extract<ActivePipe, { kind?: 'pipe' }> {
+  return !pipe.kind || pipe.kind === 'pipe';
+}
+
 function confirm() {
   emit('confirm', {
     pipeIds: selectedPipeIds.value,
-    moduleIds: selectedModuleIds.value
+    moduleIds: selectedModuleIds.value,
+    componentIds: selectedComponentIds.value
   });
   selectedPipeIds.value = [];
   selectedModuleIds.value = [];
+  selectedComponentIds.value = [];
   visible.value = false;
 }
 </script>

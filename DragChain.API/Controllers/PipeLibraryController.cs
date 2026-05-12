@@ -82,7 +82,8 @@ public class PipeLibraryController : ControllerBase
         if (pipe == null) return NotFound();
 
         var usedByModule = await _context.PipeModuleItems.AnyAsync(item => item.PipeTypeId == id);
-        if (usedByModule) return Conflict("该管线已被模块引用，请先调整模块内容。");
+        var usedByComponent = await _context.PipeComponentItems.AnyAsync(item => item.PipeTypeId == id);
+        if (usedByModule || usedByComponent) return Conflict("该管线已被模块或元件引用，请先调整模块或元件内容。");
 
         _context.PipeTypes.Remove(pipe);
         await _context.SaveChangesAsync();

@@ -13,6 +13,8 @@ public class DragChainDbContext : DbContext
     public DbSet<TrunkingCatalog> TrunkingCatalog => Set<TrunkingCatalog>();
     public DbSet<PipeModule> PipeModules => Set<PipeModule>();
     public DbSet<PipeModuleItem> PipeModuleItems => Set<PipeModuleItem>();
+    public DbSet<PipeComponent> PipeComponents => Set<PipeComponent>();
+    public DbSet<PipeComponentItem> PipeComponentItems => Set<PipeComponentItem>();
     public DbSet<AppSetting> AppSettings => Set<AppSetting>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -53,6 +55,25 @@ public class DragChainDbContext : DbContext
         modelBuilder.Entity<PipeModuleItem>(entity =>
         {
             entity.HasIndex(e => e.PipeModuleId);
+            entity.HasIndex(e => e.PipeTypeId);
+            entity.HasOne(e => e.PipeType)
+                .WithMany()
+                .HasForeignKey(e => e.PipeTypeId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<PipeComponent>(entity =>
+        {
+            entity.HasIndex(e => e.Name);
+            entity.HasMany(e => e.Items)
+                .WithOne(e => e.PipeComponent)
+                .HasForeignKey(e => e.PipeComponentId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PipeComponentItem>(entity =>
+        {
+            entity.HasIndex(e => e.PipeComponentId);
             entity.HasIndex(e => e.PipeTypeId);
             entity.HasOne(e => e.PipeType)
                 .WithMany()
