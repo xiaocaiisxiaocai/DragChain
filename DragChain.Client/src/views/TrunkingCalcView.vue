@@ -1,9 +1,16 @@
 <template>
   <PageShell>
-    <div class="split-workspace">
-      <aside class="work-panel">
+    <div class="trunking-layout">
+      <section class="trunking-slot-board">
         <el-card shadow="never" class="control-card">
-          <template #header>选型参数</template>
+          <template #header>
+            <div class="card-header-row">
+              <span>选型参数</span>
+              <el-button size="small" type="primary" @click="addSlot">
+                新增{{ activeSlotLayout === 'leftRight' ? '左右' : '上下' }}槽位
+              </el-button>
+            </div>
+          </template>
           <div class="form-line">
             <span>填充率上限</span>
             <el-input-number
@@ -20,129 +27,151 @@
           </div>
         </el-card>
 
-        <el-card shadow="never" class="control-card pipe-list-card">
-          <template #header>
-            <div class="card-header-row">
-              <span>管线清单</span>
-              <el-button size="small" type="primary" @click="showAddDialog = true">新增管线</el-button>
-            </div>
-          </template>
-          <el-table
-            :data="enrichedPipes"
-            row-key="selectionKey"
-            :tree-props="{ children: 'children' }"
-            :row-class-name="selectionRowClass"
-            size="small"
-            border
-            height="100%"
-            class="selection-table"
-            >
-            <el-table-column prop="name" label="管线 / 模块" min-width="150" show-overflow-tooltip>
-              <template #default="{ row }">
-                <div class="selection-name">
-                  <el-tag v-if="row.kind === 'module'" size="small" type="warning">模块</el-tag>
-                  <el-tag v-else-if="row.kind === 'component'" size="small" type="success">元件</el-tag>
-                  <el-tag v-else-if="row.typeLabel === '强电电缆'" size="small" type="danger">强电</el-tag>
-                  <el-tag v-else-if="row.typeLabel === '弱电电缆'" size="small" type="primary">弱电</el-tag>
-                  <el-tag v-else-if="row.typeLabel === '编码器'" size="small" type="warning">编码器</el-tag>
-                  <el-tag v-else-if="row.typeLabel === '气管'" size="small" type="success">气管</el-tag>
-                  <span>{{ row.name }}</span>
-                </div>
-              </template>
-            </el-table-column>
-            <el-table-column label="数量" width="72" align="center">
-              <template #default="{ row }">
-                <el-input-number
-                  v-if="row.kind !== 'module-item'"
-                  class="pipe-qty-input"
-                  :model-value="row.qty"
-                  :min="0"
-                  :step="1"
-                  size="small"
-                  controls-position="right"
-                  @update:model-value="(value: number | undefined) => updateQty(row.sourceIndex, Number(value || 0))"
-                />
-                <span v-else>{{ row.qty }}</span>
-              </template>
-            </el-table-column>
-            <el-table-column prop="sizeText" label="尺寸" width="92" />
-            <el-table-column prop="areaText" label="面积" width="78" align="right" />
-            <el-table-column width="52" align="center">
-              <template #default="{ row }">
-                <el-button v-if="row.kind !== 'module-item'" link type="danger" @click="removePipe(row.sourceIndex)">删除</el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-        </el-card>
-      </aside>
+        <el-tabs v-model="activeSlotLayout" class="slot-tabs">
+          <el-tab-pane label="左右槽位" name="leftRight" />
+          <el-tab-pane label="上下槽位" name="topBottom" />
+        </el-tabs>
 
-      <section class="result-area">
-        <el-card shadow="never" class="result-card">
-          <template #header>
-            <div class="card-header-row">
-              <span>填充率核算</span>
-              <el-tag type="primary">线槽容纳判定</el-tag>
-            </div>
-          </template>
-          <el-skeleton v-if="loading" :rows="4" animated />
-          <el-alert v-else-if="error" :title="error" type="error" show-icon :closable="false" />
-          <template v-else>
-            <div class="ratio-row">
-              <span>实际填充率</span>
-              <strong :class="displayResultStatus === 'ok' ? 'ok-text' : 'danger-text'">
-                {{ hasTrunkingPipes && result ? (result.actualFillRatio * 100).toFixed(1) : '0.0' }}%
-              </strong>
-            </div>
-            <el-progress
-              :percentage="hasTrunkingPipes ? Math.min((result?.actualFillRatio || 0) * 100, 100) : 0"
-              :status="displayResultStatus === 'ok' ? 'success' : 'exception'"
-              :stroke-width="18"
-            />
-            <div class="conclusion-box" :class="displayResultStatus">
-              <strong>{{ displayResultMessage }}</strong>
-              <span v-if="hasTrunkingPipes && result?.weakSide?.selectedTrunking">左侧弱电 {{ result.weakSide.selectedTrunking.model }} · 面积 {{ result.weakSide.selectedTrunking.crossSection }} mm²</span>
-              <span v-if="hasTrunkingPipes && result?.strongSide?.selectedTrunking">右侧强电 {{ result.strongSide.selectedTrunking.model }} · 面积 {{ result.strongSide.selectedTrunking.crossSection }} mm²</span>
-            </div>
-          </template>
-        </el-card>
-
-        <div class="trunking-side-grid">
-          <el-card v-for="side in trunkingSides" :key="side.key" shadow="never" class="result-card">
-            <template #header>
-              <div class="card-header-row">
-                <span>{{ side.title }}</span>
-                <el-tag :type="side.result?.resultStatus === 'err' ? 'danger' : 'success'" effect="plain">
-                  {{ side.result?.resultMessage || '无数据' }}
-                </el-tag>
-              </div>
-            </template>
-            <div class="side-summary">
-              <MetricItem label="管线面积" :value="side.result?.totalArea?.toFixed(0)" unit="mm²" />
-              <MetricItem label="推荐线槽" :value="side.result?.selectedTrunking?.model || '-'" />
-              <MetricItem label="填充率" :value="side.result ? (side.result.actualFillRatio * 100).toFixed(1) : undefined" unit="%" />
-              <MetricItem label="线槽面积" :value="side.result?.selectedTrunking?.crossSection?.toFixed(0)" unit="mm²" />
-            </div>
-            <el-table :data="side.result?.matchResults || []" size="small" border max-height="260">
-              <el-table-column prop="model" label="线槽型号" min-width="110" show-overflow-tooltip />
-              <el-table-column label="尺寸" width="100">
-                <template #default="{ row }">{{ row.width }}×{{ row.height }}</template>
-              </el-table-column>
-              <el-table-column label="面积" width="82" align="right">
-                <template #default="{ row }">{{ row.crossSection.toFixed(0) }}</template>
-              </el-table-column>
-              <el-table-column label="填充率" width="82" align="right">
-                <template #default="{ row }">{{ (row.actualFillRatio * 100).toFixed(1) }}%</template>
-              </el-table-column>
-              <el-table-column label="推荐" width="72" align="center">
-                <template #default="{ row }">
-                  <el-tag v-if="row.isRecommended" type="primary" size="small">推荐</el-tag>
-                  <span v-else>-</span>
+        <el-scrollbar class="slot-scroll">
+          <el-empty v-if="!visibleSlots.length" :description="`请先新增${activeSlotLayout === 'leftRight' ? '左右' : '上下'}槽位`" />
+          <div v-else class="slot-list">
+            <div v-for="slot in visibleSlots" :key="slot.id" class="slot-pair-row">
+              <el-card shadow="never" class="slot-card">
+                <template #header>
+                  <div class="slot-header">
+                    <el-input v-model="slot.name" class="slot-name-input" placeholder="槽位名称" />
+                    <el-button link type="danger" @click="removeSlot(slot.id)">删除</el-button>
+                  </div>
                 </template>
-              </el-table-column>
-            </el-table>
-          </el-card>
-        </div>
 
+                <div v-if="slot.layout === 'leftRight'" class="slot-section-grid is-single">
+                  <section class="slot-section">
+                    <div class="section-title">
+                      <span>管线清单（自动分左右）</span>
+                      <el-button size="small" @click="openPipePicker(slot.id, 'left')">添加管线</el-button>
+                    </div>
+                    <div class="trunking-select-row">
+                      <span>左侧线槽</span>
+                      <el-select v-model="slot.leftTrunkingId" size="small" filterable placeholder="选择左侧线槽" @change="queueCalculate">
+                        <el-option
+                          v-for="item in trunkingCatalog"
+                          :key="item.id"
+                          :label="formatTrunkingOption(item)"
+                          :value="item.id"
+                        />
+                      </el-select>
+                      <span>右侧线槽</span>
+                      <el-select v-model="slot.rightTrunkingId" size="small" filterable placeholder="选择右侧线槽" @change="queueCalculate">
+                        <el-option
+                          v-for="item in trunkingCatalog"
+                          :key="item.id"
+                          :label="formatTrunkingOption(item)"
+                          :value="item.id"
+                        />
+                      </el-select>
+                    </div>
+                    <el-table :data="createSlotRows(slot.pipes)" size="small" border max-height="260">
+                      <el-table-column prop="name" label="管线" min-width="120" show-overflow-tooltip />
+                      <el-table-column prop="qty" label="数量" width="70" align="center">
+                        <template #default="{ row }">
+                          <el-input-number
+                            class="pipe-qty-input"
+                            :model-value="row.qty"
+                            :min="0"
+                            :step="1"
+                            size="small"
+                            controls-position="right"
+                            @update:model-value="(value: number | undefined) => updateSlotPipeQty(slot.id, row.sourceIndex, Number(value || 0))"
+                          />
+                        </template>
+                      </el-table-column>
+                      <el-table-column prop="sideLabel" label="分侧" width="72" />
+                      <el-table-column prop="areaText" label="面积" width="72" align="right" />
+                      <el-table-column width="50" align="center">
+                        <template #default="{ row }">
+                          <el-button link type="danger" @click="removeSlotPipe(slot.id, row.sourceIndex)">删</el-button>
+                        </template>
+                      </el-table-column>
+                    </el-table>
+                  </section>
+                </div>
+
+                <div v-else class="slot-section-grid">
+                  <section v-for="section in slot.sections" :key="section.key" class="slot-section">
+                    <div class="section-title">
+                      <span>{{ section.label }}</span>
+                      <el-button size="small" @click="openPipePicker(slot.id, section.key)">添加管线</el-button>
+                    </div>
+                    <div class="trunking-select-row is-single">
+                      <span>线槽</span>
+                      <el-select v-model="section.selectedTrunkingId" size="small" filterable placeholder="选择线槽" @change="queueCalculate">
+                        <el-option
+                          v-for="item in trunkingCatalog"
+                          :key="item.id"
+                          :label="formatTrunkingOption(item)"
+                          :value="item.id"
+                        />
+                      </el-select>
+                    </div>
+                    <el-table :data="createSlotRows(section.pipes)" size="small" border max-height="220">
+                      <el-table-column prop="name" label="管线" min-width="120" show-overflow-tooltip />
+                      <el-table-column prop="qty" label="数量" width="70" align="center">
+                        <template #default="{ row }">
+                          <el-input-number
+                            class="pipe-qty-input"
+                            :model-value="row.qty"
+                            :min="0"
+                            :step="1"
+                            size="small"
+                            controls-position="right"
+                            @update:model-value="(value: number | undefined) => updateSectionPipeQty(slot.id, section.key, row.sourceIndex, Number(value || 0))"
+                          />
+                        </template>
+                      </el-table-column>
+                      <el-table-column prop="areaText" label="面积" width="72" align="right" />
+                      <el-table-column width="50" align="center">
+                        <template #default="{ row }">
+                          <el-button link type="danger" @click="removeSectionPipe(slot.id, section.key, row.sourceIndex)">删</el-button>
+                        </template>
+                      </el-table-column>
+                    </el-table>
+                  </section>
+                </div>
+              </el-card>
+
+              <div class="slot-summary-column">
+                <el-alert v-if="error" :title="error" type="error" show-icon :closable="false" class="summary-error" />
+                <div
+                  v-for="item in getSlotSummaryItems(slot.id)"
+                  :key="item.key"
+                  class="summary-item"
+                  :class="item.section.resultStatus"
+                >
+                  <button type="button" class="summary-main" @click="openDetail(item)">
+                    <span class="summary-title">{{ item.slot.name }} / {{ item.section.label }}</span>
+                    <span class="summary-model">{{ item.section.selectedTrunking?.model || '-' }}</span>
+                    <strong>{{ item.section.selectedTrunking ? `${(item.section.actualFillRatio * 100).toFixed(1)}%` : '-' }}</strong>
+                    <small>{{ item.section.resultMessage }}</small>
+                  </button>
+                  <div class="summary-fill-editor">
+                    <span>上限</span>
+                    <el-input-number
+                      :model-value="getSectionFillRatio(item)"
+                      size="small"
+                      :min="1"
+                      :max="100"
+                      :step="1"
+                      controls-position="right"
+                      @click.stop
+                      @change="(value: number | undefined) => updateSummaryFillRatio(item, Number(value || fillRatio))"
+                    />
+                    <span>%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </el-scrollbar>
       </section>
     </div>
 
@@ -151,15 +180,51 @@
       :pipe-lib="trunkingPipeLib"
       :pipe-modules="trunkingModules"
       :pipe-components="trunkingComponents"
-      :active-pipes="activePipes"
+      :active-pipes="pickerActivePipes"
       :allowed-types="TRUNKING_ALLOWED_TYPES"
+      allow-duplicates
       @confirm="addPipes"
     />
+
+    <el-dialog v-model="detailVisible" :title="detailTitle" width="820px" class="trunking-detail-dialog">
+      <div v-if="detailItem" class="detail-metrics">
+        <MetricItem label="管线面积" :value="detailItem.section.totalArea.toFixed(0)" unit="mm²" />
+        <MetricItem label="当前线槽" :value="detailItem.section.selectedTrunking?.model || '-'" />
+        <MetricItem
+          label="实际填充率"
+          :value="detailItem.section.selectedTrunking ? (detailItem.section.actualFillRatio * 100).toFixed(1) : undefined"
+          unit="%"
+        />
+      </div>
+      <el-table v-if="detailItem" :data="detailItem.section.matchResults" size="small" border max-height="360">
+        <el-table-column prop="model" label="线槽型号" min-width="130" show-overflow-tooltip />
+        <el-table-column label="尺寸" width="100">
+          <template #default="{ row }">{{ row.width }}×{{ row.height }}</template>
+        </el-table-column>
+        <el-table-column label="面积" width="90" align="right">
+          <template #default="{ row }">{{ row.crossSection.toFixed(0) }}</template>
+        </el-table-column>
+        <el-table-column label="填充率" width="90" align="right">
+          <template #default="{ row }">{{ (row.actualFillRatio * 100).toFixed(1) }}%</template>
+        </el-table-column>
+        <el-table-column label="结果" width="90" align="center">
+          <template #default="{ row }">
+            <el-tag :type="row.okFill ? 'success' : 'danger'" size="small">{{ row.result }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="推荐" width="80" align="center">
+          <template #default="{ row }">
+            <el-tag v-if="row.isRecommended" type="primary" size="small">推荐</el-tag>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-dialog>
   </PageShell>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import AddPipeDialog from '../components/AddPipeDialog.vue';
 import MetricItem from '../widgets/MetricItem.vue';
@@ -168,10 +233,39 @@ import { trunkingApi } from '../api/trunking';
 import { usePipeLibrary } from '../composables/usePipeLibrary';
 import { usePipeComponents } from '../composables/usePipeComponents';
 import { usePipeModules } from '../composables/usePipeModules';
-import type { ActivePipe, PipeType, TrunkingCalcResponse } from '../types';
+import type { ActivePipe, PipeType, TrunkingCalcResponse, TrunkingCatalog, TrunkingSideResult, TrunkingSlotRequest, TrunkingSlotResult } from '../types';
 import { expandSelectionToPipes } from '../utils/pipeSelection';
 import { getPipeDisplayType } from '../utils/pipeType';
-import { createTrunkingSelectionRows } from '../utils/trunkingSelectionDisplay';
+import { createTrunkingSelectionRows, type TrunkingSelectionRow } from '../utils/trunkingSelectionDisplay';
+
+type SlotLayout = 'leftRight' | 'topBottom';
+type SlotSectionKey = 'left' | 'right' | 'top' | 'bottom';
+
+interface LocalSlotSection {
+  key: 'top' | 'bottom';
+  label: string;
+  selectedTrunkingId: number | null;
+  fillRatio: number | null;
+  pipes: ActivePipe[];
+}
+
+interface LocalSlot {
+  id: string;
+  name: string;
+  layout: SlotLayout;
+  leftTrunkingId: number | null;
+  rightTrunkingId: number | null;
+  leftFillRatio: number | null;
+  rightFillRatio: number | null;
+  pipes: ActivePipe[];
+  sections: LocalSlotSection[];
+}
+
+interface SummaryItem {
+  key: string;
+  slot: TrunkingSlotResult;
+  section: TrunkingSideResult;
+}
 
 const TRUNKING_ALLOWED_TYPES = ['weak_cable', 'strong_cable', 'encoder'];
 
@@ -179,7 +273,9 @@ const { pipeLib, loadPipeLib } = usePipeLibrary();
 const { pipeModules, loadPipeModules } = usePipeModules();
 const { pipeComponents, loadPipeComponents } = usePipeComponents();
 const fillRatio = ref(75);
-const activePipes = ref<ActivePipe[]>([]);
+const activeSlotLayout = ref<SlotLayout>('leftRight');
+const slots = ref<LocalSlot[]>([]);
+const trunkingCatalog = ref<TrunkingCatalog[]>([]);
 const result = ref<TrunkingCalcResponse | null>(null);
 const loading = ref(false);
 const error = ref('');
@@ -187,6 +283,9 @@ const settingsLoading = ref(false);
 const settingsSaving = ref(false);
 const settingsSaved = ref(false);
 const showAddDialog = ref(false);
+const pickerTarget = reactive<{ slotId: string; sectionKey: SlotSectionKey }>({ slotId: '', sectionKey: 'left' });
+const detailVisible = ref(false);
+const detailItem = ref<SummaryItem | null>(null);
 
 function isTrunkingPipe(pipe?: Pick<PipeType, 'name' | 'type'> | null) {
   return pipe ? TRUNKING_ALLOWED_TYPES.includes(getPipeDisplayType(pipe)) : false;
@@ -207,20 +306,183 @@ const trunkingComponents = computed(() => pipeComponents.value.map(component => 
     return isTrunkingPipe(pipe);
   })
 })).filter(component => component.items.length > 0));
-const trunkingActivePipes = computed(() => activePipes.value.filter(pipe => {
-  if (pipe.kind === 'module') return trunkingModules.value.some(module => module.id === pipe.moduleId);
-  if (pipe.kind === 'component') return trunkingComponents.value.some(component => component.id === pipe.componentId);
-  const item = pipeLib.value.find(pipeItem => pipeItem.id === pipe.libId);
-  return isTrunkingPipe(item);
-}));
-const enrichedPipes = computed(() => createTrunkingSelectionRows(trunkingActivePipes.value, pipeLib.value, trunkingModules.value, trunkingComponents.value));
-const hasTrunkingPipes = computed(() => trunkingActivePipes.value.some(pipe => pipe.qty > 0));
-const displayResultStatus = computed(() => (hasTrunkingPipes.value ? result.value?.resultStatus || 'warn' : 'warn'));
-const displayResultMessage = computed(() => (hasTrunkingPipes.value ? result.value?.resultMessage || '请选择线槽和管线' : '请填写管线清单'));
-const trunkingSides = computed(() => [
-  { key: 'weak', title: '左侧弱电线槽', result: result.value?.weakSide || null },
-  { key: 'strong', title: '右侧强电线槽', result: result.value?.strongSide || null }
-]);
+const summaryItems = computed<SummaryItem[]>(() =>
+  (result.value?.slots || []).flatMap(slot =>
+    slot.sections.map(section => ({
+      key: `${slot.id}-${section.key}`,
+      slot,
+      section
+    }))
+  )
+);
+const visibleSlots = computed(() => slots.value.filter(slot => slot.layout === activeSlotLayout.value));
+const detailTitle = computed(() => detailItem.value ? `${detailItem.value.slot.name} / ${detailItem.value.section.label}` : '线槽详情');
+const pickerActivePipes = computed(() => {
+  const slot = slots.value.find(item => item.id === pickerTarget.slotId);
+  if (!slot) return [];
+  if (slot.layout === 'leftRight') return slot.pipes;
+  return slot.sections.find(section => section.key === pickerTarget.sectionKey)?.pipes || [];
+});
+
+function getSlotSummaryItems(slotId: string) {
+  return summaryItems.value.filter(item => item.slot.id === slotId);
+}
+
+function getSectionFillRatio(item: SummaryItem) {
+  const slot = slots.value.find(localSlot => localSlot.id === item.slot.id);
+  if (!slot) return fillRatio.value;
+
+  if (slot.layout === 'leftRight') {
+    return item.section.key === 'left' ? slot.leftFillRatio ?? fillRatio.value : slot.rightFillRatio ?? fillRatio.value;
+  }
+
+  return slot.sections.find(section => section.key === item.section.key)?.fillRatio ?? fillRatio.value;
+}
+
+function updateSummaryFillRatio(item: SummaryItem, value: number) {
+  const ratio = Math.min(Math.max(value, 1), 100);
+  const slot = slots.value.find(localSlot => localSlot.id === item.slot.id);
+  if (!slot) return;
+
+  if (slot.layout === 'leftRight') {
+    if (item.section.key === 'left') slot.leftFillRatio = ratio;
+    else slot.rightFillRatio = ratio;
+  } else {
+    const section = slot.sections.find(localSection => localSection.key === item.section.key);
+    if (section) section.fillRatio = ratio;
+  }
+
+  queueCalculate();
+}
+
+function addSlot() {
+  const layout = activeSlotLayout.value;
+  const index = slots.value.filter(slot => slot.layout === layout).length + 1;
+  slots.value.push(createSlot(`${layout === 'leftRight' ? '左右' : '上下'}槽位${index}`, layout, fillRatio.value));
+  queueCalculate();
+}
+
+function createSlot(name: string, layout: SlotLayout, defaultFillRatio: number): LocalSlot {
+  return {
+    id: `slot-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    name,
+    layout,
+    leftTrunkingId: null,
+    rightTrunkingId: null,
+    leftFillRatio: defaultFillRatio,
+    rightFillRatio: defaultFillRatio,
+    pipes: [],
+    sections: [
+      { key: 'top', label: '上层', selectedTrunkingId: null, fillRatio: defaultFillRatio, pipes: [] },
+      { key: 'bottom', label: '下层', selectedTrunkingId: null, fillRatio: defaultFillRatio, pipes: [] }
+    ]
+  };
+}
+
+function formatTrunkingOption(item: TrunkingCatalog) {
+  return `${item.model}（${item.width}×${item.height}，${item.crossSection}mm²）`;
+}
+
+function removeSlot(slotId: string) {
+  slots.value = slots.value.filter(slot => slot.id !== slotId);
+  queueCalculate();
+}
+
+function openPipePicker(slotId: string, sectionKey: SlotSectionKey) {
+  pickerTarget.slotId = slotId;
+  pickerTarget.sectionKey = sectionKey;
+  showAddDialog.value = true;
+}
+
+function addPipes(payload: { pipeIds: number[]; moduleIds: number[]; componentIds: number[] }) {
+  const target = getTargetPipeList();
+  if (!target) return;
+  const existingPipeIds = new Set(target.filter(isPipeSelection).map(pipe => pipe.libId));
+  const existingModuleIds = new Set(target.filter(pipe => pipe.kind === 'module').map(pipe => pipe.moduleId));
+  const existingComponentIds = new Set(target.filter(pipe => pipe.kind === 'component').map(pipe => pipe.componentId));
+
+  target.push(
+    ...payload.pipeIds
+      .filter(id => !existingPipeIds.has(id))
+      .map(id => ({ kind: 'pipe' as const, libId: id, qty: 1 })),
+    ...payload.moduleIds
+      .filter(id => !existingModuleIds.has(id))
+      .map(id => ({ kind: 'module' as const, moduleId: id, qty: 1 })),
+    ...payload.componentIds
+      .filter(id => !existingComponentIds.has(id))
+      .map(id => ({ kind: 'component' as const, componentId: id, qty: 1 }))
+  );
+  queueCalculate();
+}
+
+function getTargetPipeList() {
+  const slot = slots.value.find(item => item.id === pickerTarget.slotId);
+  if (!slot) return null;
+  if (slot.layout === 'leftRight') return slot.pipes;
+  return slot.sections.find(section => section.key === pickerTarget.sectionKey)?.pipes || null;
+}
+
+function createSlotRows(activePipes: ActivePipe[]): TrunkingSelectionRow[] {
+  return createTrunkingSelectionRows(activePipes, pipeLib.value, trunkingModules.value, trunkingComponents.value);
+}
+
+function updateSlotPipeQty(slotId: string, index: number, qty: number) {
+  const slot = slots.value.find(item => item.id === slotId);
+  if (slot) slot.pipes[index] = { ...slot.pipes[index], qty };
+  queueCalculate();
+}
+
+function updateSectionPipeQty(slotId: string, sectionKey: string, index: number, qty: number) {
+  const section = slots.value.find(item => item.id === slotId)?.sections.find(item => item.key === sectionKey);
+  if (section) section.pipes[index] = { ...section.pipes[index], qty };
+  queueCalculate();
+}
+
+function removeSlotPipe(slotId: string, index: number) {
+  slots.value.find(item => item.id === slotId)?.pipes.splice(index, 1);
+  queueCalculate();
+}
+
+function removeSectionPipe(slotId: string, sectionKey: string, index: number) {
+  slots.value.find(item => item.id === slotId)?.sections.find(item => item.key === sectionKey)?.pipes.splice(index, 1);
+  queueCalculate();
+}
+
+function toRequestSlots(): TrunkingSlotRequest[] {
+  return slots.value
+    .filter(slot => slot.name.trim())
+    .map(slot => {
+      if (slot.layout === 'leftRight') {
+        return {
+          id: slot.id,
+          name: slot.name.trim(),
+          layout: slot.layout,
+          leftTrunkingId: slot.leftTrunkingId,
+          rightTrunkingId: slot.rightTrunkingId,
+          leftFillRatio: toRatioValue(slot.leftFillRatio),
+          rightFillRatio: toRatioValue(slot.rightFillRatio),
+          pipes: expandSelectionToPipes(slot.pipes, trunkingModules.value, trunkingComponents.value)
+        };
+      }
+
+      return {
+        id: slot.id,
+        name: slot.name.trim(),
+        layout: slot.layout,
+        sections: slot.sections.map(section => ({
+          key: section.key,
+          label: section.label,
+          selectedTrunkingId: section.selectedTrunkingId,
+          fillRatio: toRatioValue(section.fillRatio),
+          pipes: expandSelectionToPipes(section.pipes, trunkingModules.value, trunkingComponents.value)
+        }))
+      };
+    });
+}
+
+function toRatioValue(value: number | null) {
+  return value && value > 0 ? value / 100 : null;
+}
 
 async function calculate() {
   loading.value = true;
@@ -229,7 +491,8 @@ async function calculate() {
     result.value = await trunkingApi.calculate({
       selectedTrunkingId: 0,
       fillRatio: fillRatio.value / 100,
-      pipes: expandSelectionToPipes(trunkingActivePipes.value, trunkingModules.value, trunkingComponents.value)
+      pipes: [],
+      slots: toRequestSlots()
     });
   } catch (err) {
     error.value = err instanceof Error ? err.message : '计算失败';
@@ -243,6 +506,7 @@ async function loadSettings() {
   try {
     const settings = await trunkingApi.getSettings();
     fillRatio.value = Math.round(settings.fillRatio * 100);
+    previousGlobalFillRatio = fillRatio.value;
   } catch (err) {
     ElMessage.error(err instanceof Error ? err.message : '读取填充率上限失败');
   } finally {
@@ -266,33 +530,9 @@ async function saveSettings() {
   }
 }
 
-function updateQty(index: number, qty: number) {
-  activePipes.value[index] = { ...activePipes.value[index], qty };
-}
-
-function removePipe(index: number) {
-  activePipes.value.splice(index, 1);
-}
-
-function selectionRowClass({ row }: { row: { kind?: string } }) {
-  return row.kind === 'module-item' ? 'module-detail-row' : '';
-}
-
-function addPipes(payload: { pipeIds: number[]; moduleIds: number[]; componentIds: number[] }) {
-  const existingPipeIds = new Set(activePipes.value.filter(isPipeSelection).map(pipe => pipe.libId));
-  const existingModuleIds = new Set(activePipes.value.filter(pipe => pipe.kind === 'module').map(pipe => pipe.moduleId));
-  const existingComponentIds = new Set(activePipes.value.filter(pipe => pipe.kind === 'component').map(pipe => pipe.componentId));
-  activePipes.value.push(
-    ...payload.pipeIds
-      .filter(id => !existingPipeIds.has(id))
-      .map(id => ({ kind: 'pipe' as const, libId: id, qty: 1 })),
-    ...payload.moduleIds
-      .filter(id => !existingModuleIds.has(id))
-      .map(id => ({ kind: 'module' as const, moduleId: id, qty: 1 })),
-    ...payload.componentIds
-      .filter(id => !existingComponentIds.has(id))
-      .map(id => ({ kind: 'component' as const, componentId: id, qty: 1 }))
-  );
+function openDetail(item: SummaryItem) {
+  detailItem.value = item;
+  detailVisible.value = true;
 }
 
 function isPipeSelection(pipe: ActivePipe): pipe is Extract<ActivePipe, { kind?: 'pipe' }> {
@@ -301,22 +541,37 @@ function isPipeSelection(pipe: ActivePipe): pipe is Extract<ActivePipe, { kind?:
 
 let calculateTimer = 0;
 let saveSettingsTimer = 0;
+let previousGlobalFillRatio = fillRatio.value;
 
-watch(activePipes, () => {
+function queueCalculate() {
   window.clearTimeout(calculateTimer);
   calculateTimer = window.setTimeout(calculate, 300);
-}, { deep: true });
+}
+
+watch(slots, queueCalculate, { deep: true });
 
 watch(fillRatio, () => {
+  syncDefaultSectionFillRatios(previousGlobalFillRatio, fillRatio.value);
+  previousGlobalFillRatio = fillRatio.value;
   window.clearTimeout(calculateTimer);
   window.clearTimeout(saveSettingsTimer);
   calculateTimer = window.setTimeout(calculate, 300);
-  // 输入框变化频繁，防抖后再持久化到数据库。
   saveSettingsTimer = window.setTimeout(saveSettings, 600);
 });
 
+function syncDefaultSectionFillRatios(previousValue: number, nextValue: number) {
+  slots.value.forEach(slot => {
+    if (slot.leftFillRatio === previousValue) slot.leftFillRatio = nextValue;
+    if (slot.rightFillRatio === previousValue) slot.rightFillRatio = nextValue;
+    slot.sections.forEach(section => {
+      if (section.fillRatio === previousValue) section.fillRatio = nextValue;
+    });
+  });
+}
+
 onMounted(async () => {
-  await Promise.all([loadSettings(), loadPipeLib(), loadPipeModules(), loadPipeComponents()]);
+  const [catalog] = await Promise.all([trunkingApi.getAll(), loadSettings(), loadPipeLib(), loadPipeModules(), loadPipeComponents()]);
+  trunkingCatalog.value = catalog;
   await calculate();
 });
 </script>

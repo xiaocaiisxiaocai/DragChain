@@ -25,17 +25,6 @@ public class TrunkingCalculationService : ITrunkingCalculationService
         var allPipeTypes = await _context.PipeTypes.ToListAsync();
         var pipeMap = allPipeTypes.ToDictionary(p => p.Id);
 
-        var activePipes = request.Pipes
-            .Where(p => p.PipeTypeId > 0 && p.Qty > 0)
-            .Select(p => new
-            {
-                Pipe = pipeMap.GetValueOrDefault(p.PipeTypeId),
-                p.Qty
-            })
-            .Where(x => x.Pipe != null)
-            .Where(x => x.Pipe!.Type != PipeTypeCategory.Tube)
-            .ToList();
-
         decimal fillRatio = request.FillRatio > 0 && request.FillRatio <= 1
             ? request.FillRatio
             : DEFAULT_FILL_RATIO;
@@ -44,6 +33,13 @@ public class TrunkingCalculationService : ITrunkingCalculationService
             .OrderBy(t => t.CrossSection)
             .ThenBy(t => t.Id)
             .ToList();
+
+        if (request.Slots.Count > 0)
+        {
+            return CalculateSlots(request, pipeMap, trunkingList, fillRatio);
+        }
+
+        var activePipes = ResolvePipeItems(request.Pipes, pipeMap).ToList();
 
         var weakItems = activePipes
             .Where(item => !PipeTypeCategory.IsStrongCable(item.Pipe!.Type))
@@ -119,7 +115,9 @@ public class TrunkingCalculationService : ITrunkingCalculationService
         string label,
         List<(PipeType Pipe, int Qty)> pipes,
         List<TrunkingCatalog> trunkingList,
-        decimal fillRatio)
+        decimal fillRatio,
+        int? selectedTrunkingId = null,
+        bool requireSelectedTrunking = false)
     {
         decimal totalArea = 0;
         decimal maxDia = 0;
@@ -133,10 +131,19 @@ public class TrunkingCalculationService : ITrunkingCalculationService
         }
 
         var requiredArea = fillRatio > 0 ? totalArea / fillRatio : totalArea;
-        var selectedTrunking = totalArea > 0
+        var recommendedTrunking = totalArea > 0
             ? trunkingList.FirstOrDefault(t => t.CrossSection >= requiredArea) ?? trunkingList.LastOrDefault()
             : null;
-        var recommendedId = selectedTrunking?.Id ?? 0;
+        var chosenTrunking = selectedTrunkingId.HasValue
+            ? trunkingList.FirstOrDefault(t => t.Id == selectedTrunkingId.Value)
+            : null;
+        var baseTrunking = totalArea > 0
+            ? chosenTrunking ?? trunkingList.FirstOrDefault(t => t.CrossSection >= totalArea) ?? trunkingList.LastOrDefault()
+            : null;
+        var displayTrunking = requireSelectedTrunking
+            ? chosenTrunking
+            : chosenTrunking ?? recommendedTrunking;
+        var recommendedId = recommendedTrunking?.Id ?? 0;
         var matchResults = trunkingList
             .Select(t =>
             {
@@ -157,10 +164,15 @@ public class TrunkingCalculationService : ITrunkingCalculationService
             })
             .ToList();
 
-        var actualFillRatio = selectedTrunking != null ? totalArea / selectedTrunking.CrossSection : 0;
-        var resultStatus = totalArea <= 0 || actualFillRatio <= fillRatio ? "ok" : "err";
+        var actualFillRatio = baseTrunking != null ? totalArea / baseTrunking.CrossSection : 0;
+        var needsUserSelection = requireSelectedTrunking && selectedTrunkingId is null && totalArea > 0;
+        var resultStatus = needsUserSelection
+            ? "warn"
+            : totalArea <= 0 || actualFillRatio <= fillRatio ? "ok" : "err";
         var resultMessage = totalArea <= 0
             ? "无管线"
+            : needsUserSelection
+                ? "请选择线槽"
             : resultStatus == "ok"
                 ? "可容纳"
                 : $"填充率 {actualFillRatio * 100:F1}%，超出 {fillRatio * 100:F0}% 限制";
@@ -170,14 +182,141 @@ public class TrunkingCalculationService : ITrunkingCalculationService
             Key = key,
             Label = label,
             TotalArea = totalArea,
+            FillRatio = fillRatio,
             ActualFillRatio = actualFillRatio,
             MaxPipeDia = maxDia,
             TotalPipeCount = totalCount,
-            SelectedTrunking = selectedTrunking != null ? MapToDto(selectedTrunking) : null,
+            SelectedTrunking = displayTrunking != null ? MapToDto(displayTrunking) : null,
             MatchResults = matchResults,
             ResultStatus = resultStatus,
             ResultMessage = resultMessage
         };
+    }
+
+    private static TrunkingCalcResponse CalculateSlots(
+        TrunkingCalcRequest request,
+        Dictionary<int, PipeType> pipeMap,
+        List<TrunkingCatalog> trunkingList,
+        decimal fillRatio)
+    {
+        var slotResults = request.Slots
+            .Select(slot => CalculateSlot(slot, pipeMap, trunkingList, fillRatio))
+            .ToList();
+
+        var sections = slotResults.SelectMany(slot => slot.Sections).ToList();
+        var totalArea = sections.Sum(section => section.TotalArea);
+        var actualFillRatio = sections.Count > 0 ? sections.Max(section => section.ActualFillRatio) : 0;
+        var maxDia = sections.Count > 0 ? sections.Max(section => section.MaxPipeDia) : 0;
+        var totalCount = sections.Sum(section => section.TotalPipeCount);
+        var okFill = sections.All(section => section.ResultStatus != "err");
+        var hasWarn = sections.Any(section => section.ResultStatus == "warn");
+        var selectedTrunking = sections.Select(section => section.SelectedTrunking).FirstOrDefault(t => t != null);
+
+        return new TrunkingCalcResponse
+        {
+            TotalArea = totalArea,
+            FillRatio = fillRatio,
+            ActualFillRatio = actualFillRatio,
+            MaxPipeDia = maxDia,
+            TotalPipeCount = totalCount,
+            SelectedTrunking = selectedTrunking,
+            MatchResults = sections.FirstOrDefault()?.MatchResults ?? new(),
+            Slots = slotResults,
+            ResultStatus = !okFill ? "err" : hasWarn ? "warn" : "ok",
+            ResultMessage = !okFill ? "存在槽位超出限制" : hasWarn ? "存在槽位未选择线槽" : "可容纳",
+            Steps = new TrunkingStepsDto
+            {
+                Step1_TotalArea = $"{totalArea:F2} mm²",
+                Step1_MaxDia = $"{maxDia:F1} mm",
+                Step1_PipeCount = $"{totalCount} 根",
+                Step2_FillRatio = $"{fillRatio * 100:F0} %",
+                Step2_TrunkingArea = "按槽位分区独立计算",
+                Step3_Result = !okFill
+                    ? $"存在超出容纳能力的槽位（建议 ≤{fillRatio * 100:F0}%）"
+                    : hasWarn ? "存在槽位未选择线槽" : "所有槽位可容纳"
+            }
+        };
+    }
+
+    private static TrunkingSlotResultDto CalculateSlot(
+        TrunkingSlotRequestDto slot,
+        Dictionary<int, PipeType> pipeMap,
+        List<TrunkingCatalog> trunkingList,
+        decimal fillRatio)
+    {
+        var layout = slot.Layout == "topBottom" ? "topBottom" : "leftRight";
+        var sections = layout == "topBottom"
+            ? CalculateTopBottomSections(slot, pipeMap, trunkingList, fillRatio)
+            : CalculateLeftRightSections(slot, pipeMap, trunkingList, fillRatio);
+        var resultStatus = sections.Any(section => section.ResultStatus == "err")
+            ? "err"
+            : sections.Any(section => section.ResultStatus == "warn") ? "warn" : "ok";
+
+        return new TrunkingSlotResultDto
+        {
+            Id = slot.Id,
+            Name = string.IsNullOrWhiteSpace(slot.Name) ? "未命名槽位" : slot.Name.Trim(),
+            Layout = layout,
+            Sections = sections,
+            ResultStatus = resultStatus,
+            ResultMessage = resultStatus == "ok" ? "可容纳" : resultStatus == "warn" ? "请选择线槽" : "存在超出限制"
+        };
+    }
+
+    private static List<TrunkingSideResultDto> CalculateLeftRightSections(
+        TrunkingSlotRequestDto slot,
+        Dictionary<int, PipeType> pipeMap,
+        List<TrunkingCatalog> trunkingList,
+        decimal fillRatio)
+    {
+        var items = ResolvePipeItems(slot.Pipes, pipeMap).ToList();
+        var leftItems = items
+            .Where(item => !PipeTypeCategory.IsStrongCable(item.Pipe.Type))
+            .ToList();
+        var rightItems = items
+            .Where(item => PipeTypeCategory.IsStrongCable(item.Pipe.Type))
+            .ToList();
+
+        return new List<TrunkingSideResultDto>
+        {
+            CalculateSide("left", "左侧弱电线槽", leftItems, trunkingList, NormalizeFillRatio(slot.LeftFillRatio, fillRatio), slot.LeftTrunkingId, true),
+            CalculateSide("right", "右侧强电线槽", rightItems, trunkingList, NormalizeFillRatio(slot.RightFillRatio, fillRatio), slot.RightTrunkingId, true)
+        };
+    }
+
+    private static List<TrunkingSideResultDto> CalculateTopBottomSections(
+        TrunkingSlotRequestDto slot,
+        Dictionary<int, PipeType> pipeMap,
+        List<TrunkingCatalog> trunkingList,
+        decimal fillRatio)
+    {
+        var top = slot.Sections.FirstOrDefault(section => section.Key == "top");
+        var bottom = slot.Sections.FirstOrDefault(section => section.Key == "bottom");
+
+        return new List<TrunkingSideResultDto>
+        {
+            CalculateSide("top", "上层线槽", ResolvePipeItems(top?.Pipes ?? new(), pipeMap).ToList(), trunkingList, NormalizeFillRatio(top?.FillRatio, fillRatio), top?.SelectedTrunkingId, true),
+            CalculateSide("bottom", "下层线槽", ResolvePipeItems(bottom?.Pipes ?? new(), pipeMap).ToList(), trunkingList, NormalizeFillRatio(bottom?.FillRatio, fillRatio), bottom?.SelectedTrunkingId, true)
+        };
+    }
+
+    private static decimal NormalizeFillRatio(decimal? sectionFillRatio, decimal fallback)
+    {
+        return sectionFillRatio.HasValue && sectionFillRatio.Value > 0 && sectionFillRatio.Value <= 1
+            ? sectionFillRatio.Value
+            : fallback;
+    }
+
+    private static IEnumerable<(PipeType Pipe, int Qty)> ResolvePipeItems(
+        IEnumerable<PipeItemDto> items,
+        Dictionary<int, PipeType> pipeMap)
+    {
+        return items
+            .Where(p => p.PipeTypeId > 0 && p.Qty > 0)
+            .Select(p => (Pipe: pipeMap.GetValueOrDefault(p.PipeTypeId), p.Qty))
+            .Where(item => item.Pipe != null)
+            .Where(item => item.Pipe!.Type != PipeTypeCategory.Tube)
+            .Select(item => (Pipe: item.Pipe!, item.Qty));
     }
 
     private static TrunkingCatalogDto MapToDto(TrunkingCatalog t) => new()

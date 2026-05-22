@@ -7,7 +7,7 @@
     "dev": "vite --port 5173",
     "build": "vue-tsc -b && vite build",
     "preview": "vite preview",
-    "test:logic": "vue-tsc -p tsconfig.logic-test.json"
+    "test:logic": "vue-tsc -p tsconfig.logic-test.json && node scripts/run-logic-tests.mjs"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",

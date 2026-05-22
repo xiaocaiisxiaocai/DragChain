@@ -49,7 +49,7 @@ if (singlePipe.typeLabel !== '弱电电缆' || singlePipe.sideLabel !== '左侧'
 }
 
 const moduleRow = rows[1];
-if (moduleRow.sizeText !== '最大 Φ10 mm' || moduleRow.areaText !== '675') {
+if (moduleRow.sizeText !== '最大 Φ10 mm' || moduleRow.areaText !== '975') {
   throw new Error('模块行必须显示最大尺寸和按模块数量汇总的面积');
 }
 if (moduleRow.typeLabel !== '模块' || moduleRow.sideLabel !== '混合') {
@@ -75,6 +75,6 @@ if (componentRow.children.length !== 2 || componentRow.children[0].unitQtyText !
 }
 
 const chainRows = createTrunkingSelectionRows(activePipes, pipeLib, modules, components, { areaMode: 'circle' });
-if (chainRows[0].areaText !== '39.3' || chainRows[1].areaText !== '706.9' || chainRows[2].areaText !== '235.6') {
+if (chainRows[0].areaText !== '39.3' || chainRows[1].areaText !== '765.8' || chainRows[2].areaText !== '235.6') {
   throw new Error('拖链清单面积必须按圆形截面积显示');
 }

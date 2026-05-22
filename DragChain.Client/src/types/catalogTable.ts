@@ -7,4 +7,6 @@ export interface CatalogColumn {
   precision?: number;
   step?: number;
   defaultValue?: string | number | null;
+  readonly?: boolean;
+  calculate?: (row: Record<string, unknown>) => string | number | null;
 }

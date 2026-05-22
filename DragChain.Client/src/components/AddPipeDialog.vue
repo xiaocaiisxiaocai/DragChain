@@ -3,6 +3,7 @@
     v-model="visible"
     title="从管线库新增"
     width="560px"
+    class="add-pipe-dialog"
     destroy-on-close
   >
     <el-alert
@@ -87,6 +88,7 @@ const props = defineProps<{
   pipeComponents?: PipeComponent[];
   activePipes: ActivePipe[];
   allowedTypes?: string[];
+  allowDuplicates?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -108,15 +110,15 @@ const groups = [
 ];
 
 const activePipeIdSet = computed(() =>
-  new Set(props.activePipes.filter(isPipeSelection).map(pipe => pipe.libId))
+  props.allowDuplicates ? new Set<number>() : new Set(props.activePipes.filter(isPipeSelection).map(pipe => pipe.libId))
 );
 
 const activeModuleIdSet = computed(() =>
-  new Set(props.activePipes.filter(pipe => pipe.kind === 'module').map(pipe => pipe.moduleId))
+  props.allowDuplicates ? new Set<number>() : new Set(props.activePipes.filter(pipe => pipe.kind === 'module').map(pipe => pipe.moduleId))
 );
 
 const activeComponentIdSet = computed(() =>
-  new Set(props.activePipes.filter(pipe => pipe.kind === 'component').map(pipe => pipe.componentId))
+  props.allowDuplicates ? new Set<number>() : new Set(props.activePipes.filter(pipe => pipe.kind === 'component').map(pipe => pipe.componentId))
 );
 
 const pipeComponents = computed(() => props.pipeComponents || []);

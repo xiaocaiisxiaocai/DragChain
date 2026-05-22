@@ -184,6 +184,27 @@ export interface TrunkingCalcRequest {
   selectedTrunkingId: number;
   pipes: { pipeTypeId: number; qty: number }[];
   fillRatio?: number;
+  slots?: TrunkingSlotRequest[];
+}
+
+export interface TrunkingSlotRequest {
+  id: string;
+  name: string;
+  layout: 'leftRight' | 'topBottom';
+  leftTrunkingId?: number | null;
+  rightTrunkingId?: number | null;
+  leftFillRatio?: number | null;
+  rightFillRatio?: number | null;
+  pipes?: { pipeTypeId: number; qty: number }[];
+  sections?: TrunkingSlotSectionRequest[];
+}
+
+export interface TrunkingSlotSectionRequest {
+  key: 'top' | 'bottom' | string;
+  label: string;
+  selectedTrunkingId?: number | null;
+  fillRatio?: number | null;
+  pipes: { pipeTypeId: number; qty: number }[];
 }
 
 export interface TrunkingSettings {
@@ -211,15 +232,26 @@ export interface TrunkingCalcResponse {
   matchResults: TrunkingMatchResult[];
   weakSide: TrunkingSideResult | null;
   strongSide: TrunkingSideResult | null;
+  slots: TrunkingSlotResult[];
   steps: TrunkingSteps;
   resultStatus: 'ok' | 'warn' | 'err';
   resultMessage: string;
 }
 
+export interface TrunkingSlotResult {
+  id: string;
+  name: string;
+  layout: 'leftRight' | 'topBottom';
+  sections: TrunkingSideResult[];
+  resultStatus: 'ok' | 'warn' | 'err';
+  resultMessage: string;
+}
+
 export interface TrunkingSideResult {
-  key: 'weak' | 'strong';
+  key: 'weak' | 'strong' | 'left' | 'right' | 'top' | 'bottom' | string;
   label: string;
   totalArea: number;
+  fillRatio: number;
   actualFillRatio: number;
   maxPipeDia: number;
   totalPipeCount: number;

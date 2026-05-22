@@ -56,8 +56,10 @@
             v-model="form[column.prop]"
             :precision="column.precision ?? 0"
             :step="column.step ?? 1"
+            :disabled="column.readonly"
             controls-position="right"
             class="number-input"
+            @update:model-value="applyCalculatedFields"
           />
         </el-form-item>
       </el-form>
@@ -75,6 +77,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { Plus, Refresh, Search } from '@element-plus/icons-vue';
 import PageShell from './PageShell.vue';
 import type { CatalogColumn } from '../types/catalogTable';
+import { applyCalculatedCatalogFields } from '../utils/catalogForm';
 
 const props = defineProps<{
   title: string;
@@ -102,6 +105,7 @@ function emptyForm() {
   props.columns.forEach(column => {
     form[column.prop] = column.defaultValue ?? (column.type === 'text' ? '' : 0);
   });
+  applyCalculatedFields();
 }
 
 async function load() {
@@ -124,10 +128,16 @@ function startEdit(row: Record<string, unknown>) {
   props.columns.forEach(column => {
     form[column.prop] = row[column.prop] ?? (column.type === 'text' ? '' : 0);
   });
+  applyCalculatedFields();
   dialogVisible.value = true;
 }
 
+function applyCalculatedFields() {
+  applyCalculatedCatalogFields(props.columns, form);
+}
+
 async function save() {
+  applyCalculatedFields();
   const payload = { ...form };
   if (editingId.value) {
     await props.updateRow(editingId.value, payload);

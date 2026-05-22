@@ -18,6 +18,12 @@ const columns: CatalogColumn[] = [
   { prop: 'model', label: '型号', type: 'text', minWidth: 220 },
   { prop: 'width', label: '宽', minWidth: 160 },
   { prop: 'height', label: '高', minWidth: 160 },
-  { prop: 'crossSection', label: '面积', minWidth: 180 }
+  {
+    prop: 'crossSection',
+    label: '面积',
+    minWidth: 180,
+    readonly: true,
+    calculate: row => Number(row.width || 0) * Number(row.height || 0)
+  }
 ];
 </script>
