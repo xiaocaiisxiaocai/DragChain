@@ -355,11 +355,37 @@ textarea {
 .section-title {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 8px;
   margin-bottom: 8px;
   font-size: 13px;
   font-weight: 700;
+}
+
+.section-title .el-button {
+  margin-left: auto;
+}
+
+.area-summary {
+  display: inline-flex;
+  min-width: 0;
+  height: 24px;
+  align-items: center;
+  padding: 0 8px;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  color: #1d4ed8;
+  background: #eff6ff;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.area-summary.is-muted {
+  color: #64748b;
+  border-color: var(--pure-border);
+  background: #f8fafc;
+  font-weight: 500;
 }
 
 .trunking-select-row {
@@ -444,7 +470,7 @@ textarea {
 
 .summary-fill-editor {
   display: grid;
-  grid-template-columns: auto 112px auto;
+  grid-template-columns: auto 112px auto auto;
   gap: 6px;
   align-items: center;
   margin-top: 10px;
@@ -507,12 +533,12 @@ textarea {
 }
 
 .pipe-qty-input.el-input-number--small {
-  width: 52px;
+  width: 78px;
 }
 
 .pipe-qty-input.el-input-number--small .el-input__wrapper {
-  padding-left: 4px;
-  padding-right: 20px;
+  padding-left: 6px;
+  padding-right: 24px;
 }
 
 .pipe-qty-input.el-input-number--small .el-input__inner {
@@ -521,7 +547,7 @@ textarea {
 
 .pipe-qty-input.el-input-number--small .el-input-number__decrease,
 .pipe-qty-input.el-input-number--small .el-input-number__increase {
-  width: 18px;
+  width: 22px;
 }
 
 .card-header-row {
@@ -749,6 +775,26 @@ textarea {
   height: auto;
   margin-right: 0;
   padding: 8px 10px;
+}
+
+.pipe-group .el-checkbox.is-disabled.is-checked {
+  color: #64748b;
+  background: #f8fafc;
+  border-color: #dbe3ef;
+  cursor: not-allowed;
+}
+
+.pipe-group .el-checkbox.is-disabled.is-checked .el-checkbox__input.is-disabled.is-checked .el-checkbox__inner {
+  background-color: var(--pure-primary);
+  border-color: var(--pure-primary);
+}
+
+.pipe-group .el-checkbox.is-disabled.is-checked .el-checkbox__input.is-disabled.is-checked .el-checkbox__inner::after {
+  border-color: #fff;
+}
+
+.pipe-group .el-checkbox.is-disabled.is-checked .el-checkbox__label {
+  color: #64748b;
 }
 
 .pipe-option-name {

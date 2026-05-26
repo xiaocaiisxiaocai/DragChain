@@ -69,6 +69,9 @@ app.MapControllers();
 // 健康检查
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok", timestamp = DateTime.UtcNow }));
 
+// API 路径未命中时返回明确错误，避免 SPA fallback 把 index.html 当成 JSON 返回给前端。
+app.MapFallback("/api/{**path}", () => Results.NotFound(new { message = "API 接口不存在" }));
+
 app.MapFallbackToFile("index.html");
 
 app.Run();

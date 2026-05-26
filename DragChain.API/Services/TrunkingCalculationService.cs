@@ -138,10 +138,14 @@ public class TrunkingCalculationService : ITrunkingCalculationService
             ? trunkingList.FirstOrDefault(t => t.Id == selectedTrunkingId.Value)
             : null;
         var baseTrunking = totalArea > 0
-            ? chosenTrunking ?? trunkingList.FirstOrDefault(t => t.CrossSection >= totalArea) ?? trunkingList.LastOrDefault()
+            ? chosenTrunking
+                ?? (requireSelectedTrunking
+                    ? recommendedTrunking
+                    : trunkingList.FirstOrDefault(t => t.CrossSection >= totalArea))
+                ?? trunkingList.LastOrDefault()
             : null;
         var displayTrunking = requireSelectedTrunking
-            ? chosenTrunking
+            ? chosenTrunking ?? recommendedTrunking
             : chosenTrunking ?? recommendedTrunking;
         var recommendedId = recommendedTrunking?.Id ?? 0;
         var matchResults = trunkingList
@@ -165,14 +169,9 @@ public class TrunkingCalculationService : ITrunkingCalculationService
             .ToList();
 
         var actualFillRatio = baseTrunking != null ? totalArea / baseTrunking.CrossSection : 0;
-        var needsUserSelection = requireSelectedTrunking && selectedTrunkingId is null && totalArea > 0;
-        var resultStatus = needsUserSelection
-            ? "warn"
-            : totalArea <= 0 || actualFillRatio <= fillRatio ? "ok" : "err";
+        var resultStatus = totalArea <= 0 || actualFillRatio <= fillRatio ? "ok" : "err";
         var resultMessage = totalArea <= 0
             ? "无管线"
-            : needsUserSelection
-                ? "请选择线槽"
             : resultStatus == "ok"
                 ? "可容纳"
                 : $"填充率 {actualFillRatio * 100:F1}%，超出 {fillRatio * 100:F0}% 限制";

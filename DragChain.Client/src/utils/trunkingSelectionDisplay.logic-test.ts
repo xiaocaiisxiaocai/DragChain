@@ -1,4 +1,4 @@
-import { createTrunkingSelectionRows } from './trunkingSelectionDisplay';
+import { createTrunkingSelectionRows, summarizeTrunkingSelectionRows } from './trunkingSelectionDisplay';
 import type { ActivePipe, PipeComponent, PipeModule, PipeType } from '../types';
 
 const pipeLib: PipeType[] = [
@@ -77,4 +77,14 @@ if (componentRow.children.length !== 2 || componentRow.children[0].unitQtyText !
 const chainRows = createTrunkingSelectionRows(activePipes, pipeLib, modules, components, { areaMode: 'circle' });
 if (chainRows[0].areaText !== '39.3' || chainRows[1].areaText !== '765.8' || chainRows[2].areaText !== '235.6') {
   throw new Error('拖链清单面积必须按圆形截面积显示');
+}
+
+const summary = summarizeTrunkingSelectionRows(rows);
+if (summary.totalAreaText !== '1,325' || summary.leftAreaText !== '525' || summary.rightAreaText !== '800') {
+  throw new Error('线槽清单必须能汇总总面积和左右分侧面积');
+}
+
+const emptySummary = summarizeTrunkingSelectionRows([]);
+if (emptySummary.totalAreaText !== '-' || emptySummary.leftAreaText !== '-' || emptySummary.rightAreaText !== '-') {
+  throw new Error('空线槽清单面积汇总必须显示占位');
 }

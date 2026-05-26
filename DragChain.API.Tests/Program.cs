@@ -103,6 +103,29 @@ await using (var context = CreateContext(dbPath))
     AssertEqual(36m, topBottom.Sections[0].TotalArea, "上层必须按用户分配计算");
     AssertEqual(36m, topBottom.Sections[1].TotalArea, "同一管线允许重复放入下层并重复计算");
 
+    var autoMatchedSlot = await service.CalculateAsync(new TrunkingCalcRequest
+    {
+        FillRatio = 0.1m,
+        Slots =
+        [
+            new()
+            {
+                Id = "slot-auto-match",
+                Name = "未选线槽自动匹配",
+                Layout = "leftRight",
+                Pipes =
+                [
+                    new() { PipeTypeId = 1, Qty = 1 },
+                    new() { PipeTypeId = 2, Qty = 1 }
+                ]
+            }
+        ]
+    });
+
+    AssertEqual("ok", autoMatchedSlot.ResultStatus, "槽位未选择线槽时应自动匹配可用线槽");
+    AssertEqual("TK-40×25", autoMatchedSlot.Slots[0].Sections[0].SelectedTrunking?.Model, "槽位未选择线槽时应返回最符合填充率的线槽");
+    AssertEqual(0.072m, Math.Round(autoMatchedSlot.Slots[0].Sections[0].ActualFillRatio, 4), "自动匹配后实际填充率必须按匹配线槽计算");
+
     var selectedStable = await service.CalculateAsync(new TrunkingCalcRequest
     {
         FillRatio = 0.1m,
@@ -201,6 +224,23 @@ await using (var context = CreateContext(dbPath))
     AssertEqual("ok", sectionRelaxedOverride.Slots[0].Sections[0].ResultStatus, "单独上限更宽松时必须按单独上限判定");
 }
 
+await using (var context = CreateContext(dbPath))
+{
+    await context.Database.EnsureDeletedAsync();
+    await context.Database.EnsureCreatedAsync();
+    SeedWithoutLargestTrunking(context);
+
+    await CatalogSeeder.SeedAsync(context);
+
+    var trunkingModels = await context.TrunkingCatalog
+        .OrderBy(t => t.Id)
+        .Select(t => t.Model)
+        .ToListAsync();
+
+    AssertEqual(true, trunkingModels.Contains("TK-100×100"), "已有旧线槽型录时启动种子必须补齐新增默认线槽");
+    AssertEqual(9, trunkingModels.Count, "补齐默认线槽不能重复插入已有型号");
+}
+
 try
 {
     Directory.Delete(tempDir, recursive: true);
@@ -238,6 +278,24 @@ static void Seed(DragChainDbContext context)
         new TrunkingCatalog { Id = 2, Model = "TK-40×25", Width = 40, Height = 25, CrossSection = 1000 },
         new TrunkingCatalog { Id = 3, Model = "TK-40×40", Width = 40, Height = 40, CrossSection = 1600 }
     );
+
+    context.SaveChanges();
+}
+
+static void SeedWithoutLargestTrunking(DragChainDbContext context)
+{
+    var id = 1;
+    foreach (var t in CatalogSeeder.GetTrunkingDefaults().Where(t => t.Model != "TK-100×100"))
+    {
+        context.TrunkingCatalog.Add(new TrunkingCatalog
+        {
+            Id = id++,
+            Model = t.Model,
+            Width = t.Width,
+            Height = t.Height,
+            CrossSection = t.CrossSection
+        });
+    }
 
     context.SaveChanges();
 }

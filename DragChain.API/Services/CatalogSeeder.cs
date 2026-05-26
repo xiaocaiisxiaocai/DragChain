@@ -162,6 +162,10 @@ public static class CatalogSeeder
                 context.TrunkingCatalog.Add(t);
             }
         }
+        else
+        {
+            await AddMissingDefaultTrunkingAsync(context);
+        }
 
         await context.SaveChangesAsync();
     }
@@ -201,6 +205,29 @@ public static class CatalogSeeder
         return name.Contains("電源") || name.Contains("电源")
             ? PipeTypeCategory.StrongCable
             : PipeTypeCategory.WeakCable;
+    }
+
+    private static async Task AddMissingDefaultTrunkingAsync(DragChainDbContext context)
+    {
+        var existingModels = await context.TrunkingCatalog
+            .Select(t => t.Model)
+            .ToListAsync();
+        var existingModelSet = existingModels.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var nextId = (await context.TrunkingCatalog.MaxAsync(t => (int?)t.Id) ?? 0) + 1;
+
+        foreach (var t in DefaultTrunkingCatalog)
+        {
+            if (existingModelSet.Contains(t.Model)) continue;
+
+            context.TrunkingCatalog.Add(new TrunkingCatalog
+            {
+                Id = nextId++,
+                Model = t.Model,
+                Width = t.Width,
+                Height = t.Height,
+                CrossSection = t.CrossSection
+            });
+        }
     }
 
     public static async Task ResetAsync(DragChainDbContext context)

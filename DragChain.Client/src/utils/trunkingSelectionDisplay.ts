@@ -32,6 +32,15 @@ export interface TrunkingSelectionDisplayOptions {
   areaMode?: 'square' | 'circle';
 }
 
+export interface TrunkingSelectionAreaSummary {
+  totalArea: number;
+  leftArea: number;
+  rightArea: number;
+  totalAreaText: string;
+  leftAreaText: string;
+  rightAreaText: string;
+}
+
 export function createTrunkingSelectionRows(
   activePipes: ActivePipe[],
   pipeLib: PipeType[],
@@ -160,6 +169,35 @@ export function createTrunkingSelectionRows(
     .filter((row): row is TrunkingSelectionRow => row !== null);
 }
 
+export function summarizeTrunkingSelectionRows(rows: TrunkingSelectionRow[]): TrunkingSelectionAreaSummary {
+  let leftArea = 0;
+  let rightArea = 0;
+
+  rows.forEach(row => {
+    if (row.children.length > 0) {
+      row.children.forEach(child => {
+        if (child.sideLabel === '右侧') rightArea += parseAreaText(child.areaText);
+        else leftArea += parseAreaText(child.areaText);
+      });
+      return;
+    }
+
+    if (row.sideLabel === '右侧') rightArea += parseAreaText(row.areaText);
+    else leftArea += parseAreaText(row.areaText);
+  });
+
+  const totalArea = leftArea + rightArea;
+
+  return {
+    totalArea,
+    leftArea,
+    rightArea,
+    totalAreaText: formatSummaryArea(totalArea),
+    leftAreaText: formatSummaryArea(leftArea),
+    rightAreaText: formatSummaryArea(rightArea)
+  };
+}
+
 function baseRow(selection: ActivePipe, sourceIndex: number) {
   return {
     selectionKey: `${selection.kind || 'pipe'}-${sourceIndex}`,
@@ -174,6 +212,16 @@ function formatDiameter(value: number) {
 
 function formatArea(value: number) {
   return Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1);
+}
+
+function formatSummaryArea(value: number) {
+  if (value <= 0) return '-';
+  return formatArea(value).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+function parseAreaText(value: string) {
+  const area = Number(value.replace(/,/g, ''));
+  return Number.isFinite(area) ? area : 0;
 }
 
 function formatNumber(value: number) {

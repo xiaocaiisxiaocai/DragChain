@@ -78,7 +78,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { ActivePipe, PipeComponent, PipeModule, PipeType } from '../types';
 import { getPipeDisplayLabel, getPipeDisplayType } from '../utils/pipeType';
 
@@ -138,6 +138,17 @@ const groupedPipes = computed(() =>
 
 const visibleGroups = computed(() => groups.filter(group => groupedPipes.value[group.key].length > 0));
 
+watch(
+  [visible, activePipeIdSet, activeModuleIdSet, activeComponentIdSet],
+  () => {
+    if (!visible.value) return;
+    selectedPipeIds.value = Array.from(activePipeIdSet.value);
+    selectedModuleIds.value = Array.from(activeModuleIdSet.value);
+    selectedComponentIds.value = Array.from(activeComponentIdSet.value);
+  },
+  { immediate: true }
+);
+
 function describeGroup(group: PipeModule | PipeComponent) {
   return group.items
     .map(item => {
@@ -154,9 +165,9 @@ function isPipeSelection(pipe: ActivePipe): pipe is Extract<ActivePipe, { kind?:
 
 function confirm() {
   emit('confirm', {
-    pipeIds: selectedPipeIds.value,
-    moduleIds: selectedModuleIds.value,
-    componentIds: selectedComponentIds.value
+    pipeIds: selectedPipeIds.value.filter(id => !activePipeIdSet.value.has(id)),
+    moduleIds: selectedModuleIds.value.filter(id => !activeModuleIdSet.value.has(id)),
+    componentIds: selectedComponentIds.value.filter(id => !activeComponentIdSet.value.has(id))
   });
   selectedPipeIds.value = [];
   selectedModuleIds.value = [];

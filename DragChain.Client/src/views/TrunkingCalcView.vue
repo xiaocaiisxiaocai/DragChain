@@ -48,11 +48,19 @@
                   <section class="slot-section">
                     <div class="section-title">
                       <span>管线清单（自动分左右）</span>
+                      <span class="area-summary">{{ getSlotAreaSummary(slot).totalAreaText }} mm²</span>
+                      <span class="area-summary is-muted">左 {{ getSlotAreaSummary(slot).leftAreaText }} / 右 {{ getSlotAreaSummary(slot).rightAreaText }}</span>
                       <el-button size="small" @click="openPipePicker(slot.id, 'left')">添加管线</el-button>
                     </div>
                     <div class="trunking-select-row">
                       <span>左侧线槽</span>
-                      <el-select v-model="slot.leftTrunkingId" size="small" filterable placeholder="选择左侧线槽" @change="queueCalculate">
+                      <el-select
+                        :model-value="getDisplayedSlotTrunkingId(slot, 'left')"
+                        size="small"
+                        filterable
+                        placeholder="选择左侧线槽"
+                        @change="(value: number) => updateSlotTrunkingId(slot.id, 'left', value)"
+                      >
                         <el-option
                           v-for="item in trunkingCatalog"
                           :key="item.id"
@@ -61,7 +69,13 @@
                         />
                       </el-select>
                       <span>右侧线槽</span>
-                      <el-select v-model="slot.rightTrunkingId" size="small" filterable placeholder="选择右侧线槽" @change="queueCalculate">
+                      <el-select
+                        :model-value="getDisplayedSlotTrunkingId(slot, 'right')"
+                        size="small"
+                        filterable
+                        placeholder="选择右侧线槽"
+                        @change="(value: number) => updateSlotTrunkingId(slot.id, 'right', value)"
+                      >
                         <el-option
                           v-for="item in trunkingCatalog"
                           :key="item.id"
@@ -71,8 +85,8 @@
                       </el-select>
                     </div>
                     <el-table :data="createSlotRows(slot.pipes)" size="small" border max-height="260">
-                      <el-table-column prop="name" label="管线" min-width="120" show-overflow-tooltip />
-                      <el-table-column prop="qty" label="数量" width="70" align="center">
+                      <el-table-column prop="name" label="管线" min-width="180" show-overflow-tooltip />
+                      <el-table-column prop="qty" label="数量" width="96" align="center">
                         <template #default="{ row }">
                           <el-input-number
                             class="pipe-qty-input"
@@ -85,9 +99,9 @@
                           />
                         </template>
                       </el-table-column>
-                      <el-table-column prop="sideLabel" label="分侧" width="72" />
-                      <el-table-column prop="areaText" label="面积" width="72" align="right" />
-                      <el-table-column width="50" align="center">
+                      <el-table-column prop="sideLabel" label="分侧" width="88" align="center" />
+                      <el-table-column prop="areaText" label="面积" width="104" align="right" />
+                      <el-table-column width="64" align="center">
                         <template #default="{ row }">
                           <el-button link type="danger" @click="removeSlotPipe(slot.id, row.sourceIndex)">删</el-button>
                         </template>
@@ -100,11 +114,18 @@
                   <section v-for="section in slot.sections" :key="section.key" class="slot-section">
                     <div class="section-title">
                       <span>{{ section.label }}</span>
+                      <span class="area-summary">{{ getSectionAreaSummary(section).totalAreaText }} mm²</span>
                       <el-button size="small" @click="openPipePicker(slot.id, section.key)">添加管线</el-button>
                     </div>
                     <div class="trunking-select-row is-single">
                       <span>线槽</span>
-                      <el-select v-model="section.selectedTrunkingId" size="small" filterable placeholder="选择线槽" @change="queueCalculate">
+                      <el-select
+                        :model-value="getDisplayedSectionTrunkingId(slot, section)"
+                        size="small"
+                        filterable
+                        placeholder="选择线槽"
+                        @change="(value: number) => updateTopBottomSectionTrunkingId(slot.id, section.key, value)"
+                      >
                         <el-option
                           v-for="item in trunkingCatalog"
                           :key="item.id"
@@ -114,8 +135,8 @@
                       </el-select>
                     </div>
                     <el-table :data="createSlotRows(section.pipes)" size="small" border max-height="220">
-                      <el-table-column prop="name" label="管线" min-width="120" show-overflow-tooltip />
-                      <el-table-column prop="qty" label="数量" width="70" align="center">
+                      <el-table-column prop="name" label="管线" min-width="180" show-overflow-tooltip />
+                      <el-table-column prop="qty" label="数量" width="96" align="center">
                         <template #default="{ row }">
                           <el-input-number
                             class="pipe-qty-input"
@@ -128,8 +149,8 @@
                           />
                         </template>
                       </el-table-column>
-                      <el-table-column prop="areaText" label="面积" width="72" align="right" />
-                      <el-table-column width="50" align="center">
+                      <el-table-column prop="areaText" label="面积" width="104" align="right" />
+                      <el-table-column width="64" align="center">
                         <template #default="{ row }">
                           <el-button link type="danger" @click="removeSectionPipe(slot.id, section.key, row.sourceIndex)">删</el-button>
                         </template>
@@ -163,9 +184,11 @@
                       :step="1"
                       controls-position="right"
                       @click.stop
-                      @change="(value: number | undefined) => updateSummaryFillRatio(item, Number(value || fillRatio))"
+                      @update:model-value="(value: number | undefined) => updateSummaryFillRatio(item, Number(value || fillRatio))"
                     />
                     <span>%</span>
+                    <el-text v-if="workspaceSaving" size="small" type="info">保存中</el-text>
+                    <el-text v-else-if="workspaceSaved" size="small" type="success">已保存</el-text>
                   </div>
                 </div>
               </div>
@@ -182,7 +205,6 @@
       :pipe-components="trunkingComponents"
       :active-pipes="pickerActivePipes"
       :allowed-types="TRUNKING_ALLOWED_TYPES"
-      allow-duplicates
       @confirm="addPipes"
     />
 
@@ -236,30 +258,8 @@ import { usePipeModules } from '../composables/usePipeModules';
 import type { ActivePipe, PipeType, TrunkingCalcResponse, TrunkingCatalog, TrunkingSideResult, TrunkingSlotRequest, TrunkingSlotResult } from '../types';
 import { expandSelectionToPipes } from '../utils/pipeSelection';
 import { getPipeDisplayType } from '../utils/pipeType';
-import { createTrunkingSelectionRows, type TrunkingSelectionRow } from '../utils/trunkingSelectionDisplay';
-
-type SlotLayout = 'leftRight' | 'topBottom';
-type SlotSectionKey = 'left' | 'right' | 'top' | 'bottom';
-
-interface LocalSlotSection {
-  key: 'top' | 'bottom';
-  label: string;
-  selectedTrunkingId: number | null;
-  fillRatio: number | null;
-  pipes: ActivePipe[];
-}
-
-interface LocalSlot {
-  id: string;
-  name: string;
-  layout: SlotLayout;
-  leftTrunkingId: number | null;
-  rightTrunkingId: number | null;
-  leftFillRatio: number | null;
-  rightFillRatio: number | null;
-  pipes: ActivePipe[];
-  sections: LocalSlotSection[];
-}
+import { createTrunkingSelectionRows, summarizeTrunkingSelectionRows, type TrunkingSelectionRow } from '../utils/trunkingSelectionDisplay';
+import { getTrunkingRuntimeState, setTrunkingRuntimeState, type LocalSlot, type LocalSlotSection, type SlotLayout, type SlotSectionKey } from '../stores/trunkingRuntimeState';
 
 interface SummaryItem {
   key: string;
@@ -282,6 +282,8 @@ const error = ref('');
 const settingsLoading = ref(false);
 const settingsSaving = ref(false);
 const settingsSaved = ref(false);
+const workspaceSaving = ref(false);
+const workspaceSaved = ref(false);
 const showAddDialog = ref(false);
 const pickerTarget = reactive<{ slotId: string; sectionKey: SlotSectionKey }>({ slotId: '', sectionKey: 'left' });
 const detailVisible = ref(false);
@@ -328,6 +330,21 @@ function getSlotSummaryItems(slotId: string) {
   return summaryItems.value.filter(item => item.slot.id === slotId);
 }
 
+function getResultSection(slotId: string, sectionKey: string) {
+  return result.value?.slots
+    .find(slot => slot.id === slotId)
+    ?.sections.find(section => section.key === sectionKey) || null;
+}
+
+function getDisplayedSlotTrunkingId(slot: LocalSlot, sectionKey: 'left' | 'right') {
+  const manualId = sectionKey === 'left' ? slot.leftTrunkingId : slot.rightTrunkingId;
+  return manualId ?? getResultSection(slot.id, sectionKey)?.selectedTrunking?.id ?? undefined;
+}
+
+function getDisplayedSectionTrunkingId(slot: LocalSlot, section: LocalSlotSection) {
+  return section.selectedTrunkingId ?? getResultSection(slot.id, section.key)?.selectedTrunking?.id ?? undefined;
+}
+
 function getSectionFillRatio(item: SummaryItem) {
   const slot = slots.value.find(localSlot => localSlot.id === item.slot.id);
   if (!slot) return fillRatio.value;
@@ -353,6 +370,7 @@ function updateSummaryFillRatio(item: SummaryItem, value: number) {
   }
 
   queueCalculate();
+  queueSaveWorkspaceStatus();
 }
 
 function addSlot() {
@@ -424,6 +442,32 @@ function getTargetPipeList() {
 
 function createSlotRows(activePipes: ActivePipe[]): TrunkingSelectionRow[] {
   return createTrunkingSelectionRows(activePipes, pipeLib.value, trunkingModules.value, trunkingComponents.value);
+}
+
+function updateSlotTrunkingId(slotId: string, sectionKey: 'left' | 'right', value: number | undefined) {
+  const slot = slots.value.find(item => item.id === slotId);
+  if (!slot) return;
+
+  if (sectionKey === 'left') slot.leftTrunkingId = value ?? null;
+  else slot.rightTrunkingId = value ?? null;
+
+  queueCalculate();
+}
+
+function updateTopBottomSectionTrunkingId(slotId: string, sectionKey: string, value: number | undefined) {
+  const section = slots.value.find(item => item.id === slotId)?.sections.find(item => item.key === sectionKey);
+  if (!section) return;
+
+  section.selectedTrunkingId = value ?? null;
+  queueCalculate();
+}
+
+function getSlotAreaSummary(slot: LocalSlot) {
+  return summarizeTrunkingSelectionRows(createSlotRows(slot.pipes));
+}
+
+function getSectionAreaSummary(section: LocalSlotSection) {
+  return summarizeTrunkingSelectionRows(createSlotRows(section.pipes));
 }
 
 function updateSlotPipeQty(slotId: string, index: number, qty: number) {
@@ -530,6 +574,39 @@ async function saveSettings() {
   }
 }
 
+function loadWorkspace() {
+  const runtimeState = getTrunkingRuntimeState();
+  if (!runtimeState) return;
+
+  activeSlotLayout.value = runtimeState.activeSlotLayout;
+  slots.value = runtimeState.slots;
+}
+
+function saveWorkspace() {
+  setTrunkingRuntimeState(createWorkspaceState());
+}
+
+function queueSaveWorkspaceStatus() {
+  workspaceSaving.value = true;
+  workspaceSaved.value = false;
+  window.clearTimeout(saveWorkspaceStatusTimer);
+  saveWorkspaceStatusTimer = window.setTimeout(() => {
+    saveWorkspace();
+    workspaceSaving.value = false;
+    workspaceSaved.value = true;
+    window.setTimeout(() => {
+      workspaceSaved.value = false;
+    }, 1600);
+  }, 600);
+}
+
+function createWorkspaceState() {
+  return {
+    activeSlotLayout: activeSlotLayout.value,
+    slots: slots.value
+  };
+}
+
 function openDetail(item: SummaryItem) {
   detailItem.value = item;
   detailVisible.value = true;
@@ -541,6 +618,7 @@ function isPipeSelection(pipe: ActivePipe): pipe is Extract<ActivePipe, { kind?:
 
 let calculateTimer = 0;
 let saveSettingsTimer = 0;
+let saveWorkspaceStatusTimer = 0;
 let previousGlobalFillRatio = fillRatio.value;
 
 function queueCalculate() {
@@ -548,7 +626,10 @@ function queueCalculate() {
   calculateTimer = window.setTimeout(calculate, 300);
 }
 
-watch(slots, queueCalculate, { deep: true });
+watch(slots, () => {
+  queueCalculate();
+  saveWorkspace();
+}, { deep: true });
 
 watch(fillRatio, () => {
   syncDefaultSectionFillRatios(previousGlobalFillRatio, fillRatio.value);
@@ -558,6 +639,8 @@ watch(fillRatio, () => {
   calculateTimer = window.setTimeout(calculate, 300);
   saveSettingsTimer = window.setTimeout(saveSettings, 600);
 });
+
+watch(activeSlotLayout, saveWorkspace);
 
 function syncDefaultSectionFillRatios(previousValue: number, nextValue: number) {
   slots.value.forEach(slot => {
@@ -572,6 +655,7 @@ function syncDefaultSectionFillRatios(previousValue: number, nextValue: number) 
 onMounted(async () => {
   const [catalog] = await Promise.all([trunkingApi.getAll(), loadSettings(), loadPipeLib(), loadPipeModules(), loadPipeComponents()]);
   trunkingCatalog.value = catalog;
+  loadWorkspace();
   await calculate();
 });
 </script>

@@ -1,10 +1,16 @@
 const defaultApiBase = import.meta.env.DEV ? 'http://localhost:5256' : '';
 const API_BASE = `${import.meta.env.VITE_API_BASE || defaultApiBase}/api`;
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+interface ApiRequestOptions extends RequestInit {
+  parseJson?: boolean;
+}
+
+async function request<T>(path: string, options?: ApiRequestOptions): Promise<T> {
+  const url = `${API_BASE}${path}`;
+  const { parseJson = true, ...fetchOptions } = options || {};
+  const res = await fetch(url, {
     headers: { 'Content-Type': 'application/json' },
-    ...options
+    ...fetchOptions
   });
 
   if (!res.ok) {
@@ -16,8 +22,21 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     return undefined as T;
   }
 
+  if (!parseJson) {
+    return undefined as T;
+  }
+
   const text = await res.text();
-  return text ? (JSON.parse(text) as T) : (undefined as T);
+  if (!text) {
+    return undefined as T;
+  }
+
+  const contentType = res.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    throw new Error(`接口 ${url} 返回的不是 JSON，请检查后端是否已更新并正常启动。`);
+  }
+
+  return JSON.parse(text) as T;
 }
 
 export const client = {
