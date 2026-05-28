@@ -12,7 +12,7 @@ namespace DragChain.API.Controllers;
 public class TrunkingController : ControllerBase
 {
     private const string FillRatioLimitKey = "TrunkingFillRatioLimit";
-    private const decimal DefaultFillRatioLimit = 0.75m;
+    private const decimal DefaultFillRatioLimit = 0.60m;
 
     private readonly DragChainDbContext _context;
     private readonly ITrunkingCalculationService _calcService;
@@ -55,7 +55,7 @@ public class TrunkingController : ControllerBase
     {
         if (dto.FillRatio <= 0 || dto.FillRatio > 1)
         {
-            return BadRequest("填充率上限必须大于 0 且不超过 100%。");
+            return BadRequest("有效利用率上限必须大于 0 且不超过 100%。");
         }
 
         var setting = await _context.AppSettings.FindAsync(FillRatioLimitKey);

@@ -13,7 +13,7 @@ public interface ITrunkingCalculationService
 public class TrunkingCalculationService : ITrunkingCalculationService
 {
     private readonly DragChainDbContext _context;
-    private const decimal DEFAULT_FILL_RATIO = 0.75m;
+    private const decimal DEFAULT_FILL_RATIO = 0.60m;
 
     public TrunkingCalculationService(DragChainDbContext context)
     {
@@ -91,7 +91,7 @@ public class TrunkingCalculationService : ITrunkingCalculationService
         steps.Step2_TrunkingArea = $"弱电 {weakSide.SelectedTrunking?.CrossSection.ToString("F2") ?? "—"} / 强电 {strongSide.SelectedTrunking?.CrossSection.ToString("F2") ?? "—"} mm²";
         steps.Step3_Result = okFill
             ? $"可容納，弱电 {weakSide.ActualFillRatio * 100:F1}% / 强电 {strongSide.ActualFillRatio * 100:F1}%"
-            : $"存在超出容納能力的线槽（建议 ≤{fillRatio * 100:F0}%）";
+            : $"存在超出容納能力的线槽（有效利用率建议 ≤{fillRatio * 100:F0}%）";
 
         return new TrunkingCalcResponse
         {
@@ -174,7 +174,7 @@ public class TrunkingCalculationService : ITrunkingCalculationService
             ? "无管线"
             : resultStatus == "ok"
                 ? "可容纳"
-                : $"填充率 {actualFillRatio * 100:F1}%，超出 {fillRatio * 100:F0}% 限制";
+                : $"有效利用率 {actualFillRatio * 100:F1}%，超出 {fillRatio * 100:F0}% 限制";
 
         return new TrunkingSideResultDto
         {
@@ -231,7 +231,7 @@ public class TrunkingCalculationService : ITrunkingCalculationService
                 Step2_FillRatio = $"{fillRatio * 100:F0} %",
                 Step2_TrunkingArea = "按槽位分区独立计算",
                 Step3_Result = !okFill
-                    ? $"存在超出容纳能力的槽位（建议 ≤{fillRatio * 100:F0}%）"
+                    ? $"存在超出容纳能力的槽位（有效利用率建议 ≤{fillRatio * 100:F0}%）"
                     : hasWarn ? "存在槽位未选择线槽" : "所有槽位可容纳"
             }
         };

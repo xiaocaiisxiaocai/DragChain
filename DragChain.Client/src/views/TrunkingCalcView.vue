@@ -12,15 +12,16 @@
             </div>
           </template>
           <div class="form-line">
-            <span>填充率上限</span>
+            <span>有效利用率上限</span>
             <el-input-number
+              v-if="!settingsLoading"
               v-model="fillRatio"
               :min="1"
               :max="100"
               :step="1"
-              :disabled="settingsLoading"
               controls-position="right"
             />
+            <el-text v-else size="small" type="info">读取中</el-text>
             <span>%</span>
             <el-text v-if="settingsSaving" size="small" type="info">保存中</el-text>
             <el-text v-else-if="settingsSaved" size="small" type="success">已保存</el-text>
@@ -272,14 +273,14 @@ const TRUNKING_ALLOWED_TYPES = ['weak_cable', 'strong_cable', 'encoder'];
 const { pipeLib, loadPipeLib } = usePipeLibrary();
 const { pipeModules, loadPipeModules } = usePipeModules();
 const { pipeComponents, loadPipeComponents } = usePipeComponents();
-const fillRatio = ref(75);
+const fillRatio = ref(60);
 const activeSlotLayout = ref<SlotLayout>('leftRight');
 const slots = ref<LocalSlot[]>([]);
 const trunkingCatalog = ref<TrunkingCatalog[]>([]);
 const result = ref<TrunkingCalcResponse | null>(null);
 const loading = ref(false);
 const error = ref('');
-const settingsLoading = ref(false);
+const settingsLoading = ref(true);
 const settingsSaving = ref(false);
 const settingsSaved = ref(false);
 const workspaceSaving = ref(false);
@@ -549,10 +550,12 @@ async function loadSettings() {
   settingsLoading.value = true;
   try {
     const settings = await trunkingApi.getSettings();
-    fillRatio.value = Math.round(settings.fillRatio * 100);
+    const loadedFillRatio = Math.round(settings.fillRatio * 100);
+    suppressNextFillRatioWatch = fillRatio.value !== loadedFillRatio;
+    fillRatio.value = loadedFillRatio;
     previousGlobalFillRatio = fillRatio.value;
   } catch (err) {
-    ElMessage.error(err instanceof Error ? err.message : '读取填充率上限失败');
+    ElMessage.error(err instanceof Error ? err.message : '读取有效利用率上限失败');
   } finally {
     settingsLoading.value = false;
   }
@@ -568,7 +571,7 @@ async function saveSettings() {
       settingsSaved.value = false;
     }, 1600);
   } catch (err) {
-    ElMessage.error(err instanceof Error ? err.message : '保存填充率上限失败');
+    ElMessage.error(err instanceof Error ? err.message : '保存有效利用率上限失败');
   } finally {
     settingsSaving.value = false;
   }
@@ -620,6 +623,7 @@ let calculateTimer = 0;
 let saveSettingsTimer = 0;
 let saveWorkspaceStatusTimer = 0;
 let previousGlobalFillRatio = fillRatio.value;
+let suppressNextFillRatioWatch = false;
 
 function queueCalculate() {
   window.clearTimeout(calculateTimer);
@@ -632,6 +636,12 @@ watch(slots, () => {
 }, { deep: true });
 
 watch(fillRatio, () => {
+  if (suppressNextFillRatioWatch) {
+    suppressNextFillRatioWatch = false;
+    previousGlobalFillRatio = fillRatio.value;
+    return;
+  }
+
   syncDefaultSectionFillRatios(previousGlobalFillRatio, fillRatio.value);
   previousGlobalFillRatio = fillRatio.value;
   window.clearTimeout(calculateTimer);

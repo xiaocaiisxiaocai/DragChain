@@ -25,10 +25,13 @@ await using (var context = CreateContext(dbPath))
 
     var relaxed = await service.CalculateAsync(new TrunkingCalcRequest { FillRatio = 0.5m, Pipes = pipes });
     var strict = await service.CalculateAsync(new TrunkingCalcRequest { FillRatio = 0.2m, Pipes = pipes });
+    var defaulted = await service.CalculateAsync(new TrunkingCalcRequest { FillRatio = 0m, Pipes = pipes });
 
     AssertEqual(0.48m, Math.Round(relaxed.ActualFillRatio, 4), "50% 上限下实际填充率");
     AssertEqual(0.48m, Math.Round(strict.ActualFillRatio, 4), "20% 上限下实际填充率不能因为推荐线槽变更而变化");
     AssertEqual("TK-40×40", strict.WeakSide?.SelectedTrunking?.Model, "20% 上限下仍应推荐更大的线槽");
+    AssertEqual(0.6m, new TrunkingCalcRequest().FillRatio, "线槽请求默认有效利用率上限");
+    AssertEqual(0.6m, defaulted.FillRatio, "未传有效上限时服务必须回退到 60%");
 
     var overLimit = await service.CalculateAsync(new TrunkingCalcRequest
     {

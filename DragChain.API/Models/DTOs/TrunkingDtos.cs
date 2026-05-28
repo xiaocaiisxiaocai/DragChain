@@ -5,7 +5,7 @@ namespace DragChain.API.Models.DTOs;
 public class TrunkingCalcRequest
 {
     public int SelectedTrunkingId { get; set; }
-    public decimal FillRatio { get; set; } = 0.75m;
+    public decimal FillRatio { get; set; } = 0.60m;
     public List<PipeItemDto> Pipes { get; set; } = new();
     public List<TrunkingSlotRequestDto> Slots { get; set; } = new();
 }
@@ -99,7 +99,7 @@ public class TrunkingCatalogDto
 
 public class TrunkingSettingsDto
 {
-    public decimal FillRatio { get; set; } = 0.75m;
+    public decimal FillRatio { get; set; } = 0.60m;
 }
 
 public class TrunkingStepsDto
