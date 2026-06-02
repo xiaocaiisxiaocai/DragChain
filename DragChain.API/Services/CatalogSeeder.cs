@@ -102,15 +102,15 @@ public static class CatalogSeeder
 
     private static readonly List<TrunkingCatalog> DefaultTrunkingCatalog = new()
     {
-        new TrunkingCatalog { Model = "TK-25×25",  Width = 25,  Height = 25,  CrossSection = 625 },
-        new TrunkingCatalog { Model = "TK-40×25",  Width = 40,  Height = 25,  CrossSection = 1000 },
-        new TrunkingCatalog { Model = "TK-40×40",  Width = 40,  Height = 40,  CrossSection = 1600 },
-        new TrunkingCatalog { Model = "TK-60×40",  Width = 60,  Height = 40,  CrossSection = 2400 },
-        new TrunkingCatalog { Model = "TK-60×60",  Width = 60,  Height = 60,  CrossSection = 3600 },
-        new TrunkingCatalog { Model = "TK-80×40",  Width = 80,  Height = 40,  CrossSection = 3200 },
-        new TrunkingCatalog { Model = "TK-80×60",  Width = 80,  Height = 60,  CrossSection = 4800 },
-        new TrunkingCatalog { Model = "TK-100×60", Width = 100, Height = 60,  CrossSection = 6000 },
-        new TrunkingCatalog { Model = "TK-100×100", Width = 100, Height = 100, CrossSection = 10000 },
+        new TrunkingCatalog { Model = "TK-25×25",  Width = 25,  Height = 25,  CrossSection = 625, FillRatioLimit = 0.60m },
+        new TrunkingCatalog { Model = "TK-40×25",  Width = 40,  Height = 25,  CrossSection = 1000, FillRatioLimit = 0.60m },
+        new TrunkingCatalog { Model = "TK-40×40",  Width = 40,  Height = 40,  CrossSection = 1600, FillRatioLimit = 0.60m },
+        new TrunkingCatalog { Model = "TK-60×40",  Width = 60,  Height = 40,  CrossSection = 2400, FillRatioLimit = 0.60m },
+        new TrunkingCatalog { Model = "TK-60×60",  Width = 60,  Height = 60,  CrossSection = 3600, FillRatioLimit = 0.60m },
+        new TrunkingCatalog { Model = "TK-80×40",  Width = 80,  Height = 40,  CrossSection = 3200, FillRatioLimit = 0.60m },
+        new TrunkingCatalog { Model = "TK-80×60",  Width = 80,  Height = 60,  CrossSection = 4800, FillRatioLimit = 0.60m },
+        new TrunkingCatalog { Model = "TK-100×60", Width = 100, Height = 60,  CrossSection = 6000, FillRatioLimit = 0.60m },
+        new TrunkingCatalog { Model = "TK-100×100", Width = 100, Height = 100, CrossSection = 10000, FillRatioLimit = 0.60m },
     };
 
     public static (List<PipeType> pipeTypes, List<WzlCatalog> wzlCatalog, List<MeCatalog> meCatalog,
@@ -225,7 +225,8 @@ public static class CatalogSeeder
                 Model = t.Model,
                 Width = t.Width,
                 Height = t.Height,
-                CrossSection = t.CrossSection
+                CrossSection = t.CrossSection,
+                FillRatioLimit = t.FillRatioLimit
             });
         }
     }

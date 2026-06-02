@@ -8,5 +8,6 @@ export interface CatalogColumn {
   step?: number;
   defaultValue?: string | number | null;
   readonly?: boolean;
+  format?: (value: unknown, row: Record<string, unknown>) => string;
   calculate?: (row: Record<string, unknown>) => string | number | null;
 }

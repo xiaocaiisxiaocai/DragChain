@@ -4,6 +4,7 @@ import type { PipeComponent } from '../types';
 export interface CreatePipeComponentItem {
   pipeTypeId: number;
   qty: number;
+  layer: 'top' | 'bottom';
 }
 
 export interface CreatePipeComponent {

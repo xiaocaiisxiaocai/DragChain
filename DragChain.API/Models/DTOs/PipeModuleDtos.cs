@@ -16,6 +16,7 @@ public class PipeModuleItemDto
     public int ModuleId { get; set; }
     public int PipeTypeId { get; set; }
     public int Qty { get; set; }
+    public string Layer { get; set; } = "top";
     public PipeType? PipeType { get; set; }
 }
 
@@ -39,4 +40,5 @@ public class CreatePipeModuleItemDto
 {
     public int PipeTypeId { get; set; }
     public int Qty { get; set; } = 1;
+    public string Layer { get; set; } = "top";
 }

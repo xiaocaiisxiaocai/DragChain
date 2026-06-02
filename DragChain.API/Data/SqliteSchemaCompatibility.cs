@@ -10,6 +10,7 @@ public static class SqliteSchemaCompatibility
         await EnsureMeCatalogColumnsAsync(context);
         await EnsureTrunkingCatalogShapeAsync(context);
         await EnsurePipeComponentTablesAsync(context);
+        await EnsureModuleAndComponentItemLayerColumnsAsync(context);
     }
 
     private static async Task EnsureMeCatalogColumnsAsync(DragChainDbContext context)
@@ -38,27 +39,37 @@ public static class SqliteSchemaCompatibility
             || columns.Contains("Material")
             || columns.Contains("Remarks");
 
-        if (!hasLegacyColumns) return;
+        if (hasLegacyColumns)
+        {
+            // 早期迁移保留了旧字段且带 NOT NULL，当前种子数据只写新字段；重建表以匹配当前模型。
+            await context.Database.ExecuteSqlRawAsync("""
+                PRAGMA foreign_keys=OFF;
+                DROP TABLE IF EXISTS "__TrunkingCatalog_new";
+                CREATE TABLE "__TrunkingCatalog_new" (
+                    "Id" INTEGER NOT NULL CONSTRAINT "PK_TrunkingCatalog" PRIMARY KEY AUTOINCREMENT,
+                    "Model" TEXT NOT NULL,
+                    "Width" decimal(8,2) NOT NULL,
+                    "Height" decimal(8,2) NOT NULL,
+                    "CrossSection" decimal(10,2) NOT NULL,
+                    "FillRatioLimit" decimal(5,2) NOT NULL DEFAULT 0.6
+                );
+                INSERT INTO "__TrunkingCatalog_new" ("Id", "Model", "Width", "Height", "CrossSection", "FillRatioLimit")
+                SELECT "Id", "Model", "Width", "Height", "CrossSection", 0.6
+                FROM "TrunkingCatalog";
+                DROP TABLE "TrunkingCatalog";
+                ALTER TABLE "__TrunkingCatalog_new" RENAME TO "TrunkingCatalog";
+                CREATE INDEX "IX_TrunkingCatalog_Model" ON "TrunkingCatalog" ("Model");
+                PRAGMA foreign_keys=ON;
+                """);
+        }
 
-        // 早期迁移保留了旧字段且带 NOT NULL，当前种子数据只写新字段；重建表以匹配当前模型。
-        await context.Database.ExecuteSqlRawAsync("""
-            PRAGMA foreign_keys=OFF;
-            DROP TABLE IF EXISTS "__TrunkingCatalog_new";
-            CREATE TABLE "__TrunkingCatalog_new" (
-                "Id" INTEGER NOT NULL CONSTRAINT "PK_TrunkingCatalog" PRIMARY KEY AUTOINCREMENT,
-                "Model" TEXT NOT NULL,
-                "Width" decimal(8,2) NOT NULL,
-                "Height" decimal(8,2) NOT NULL,
-                "CrossSection" decimal(10,2) NOT NULL
-            );
-            INSERT INTO "__TrunkingCatalog_new" ("Id", "Model", "Width", "Height", "CrossSection")
-            SELECT "Id", "Model", "Width", "Height", "CrossSection"
-            FROM "TrunkingCatalog";
-            DROP TABLE "TrunkingCatalog";
-            ALTER TABLE "__TrunkingCatalog_new" RENAME TO "TrunkingCatalog";
-            CREATE INDEX "IX_TrunkingCatalog_Model" ON "TrunkingCatalog" ("Model");
-            PRAGMA foreign_keys=ON;
-            """);
+        columns = await GetColumnsAsync(context, "TrunkingCatalog");
+        if (!columns.Contains("FillRatioLimit"))
+        {
+            await context.Database.ExecuteSqlRawAsync("""
+                ALTER TABLE "TrunkingCatalog" ADD COLUMN "FillRatioLimit" decimal(5,2) NOT NULL DEFAULT 0.6;
+                """);
+        }
     }
 
     private static async Task EnsurePipeComponentTablesAsync(DragChainDbContext context)
@@ -82,6 +93,33 @@ public static class SqliteSchemaCompatibility
             CREATE INDEX IF NOT EXISTS "IX_PipeComponentItems_PipeComponentId" ON "PipeComponentItems" ("PipeComponentId");
             CREATE INDEX IF NOT EXISTS "IX_PipeComponentItems_PipeTypeId" ON "PipeComponentItems" ("PipeTypeId");
             """);
+    }
+
+    private static async Task EnsureModuleAndComponentItemLayerColumnsAsync(DragChainDbContext context)
+    {
+        await EnsureColumnAsync(context, "PipeModuleItems", "Layer", """
+            ALTER TABLE "PipeModuleItems" ADD COLUMN "Layer" TEXT NOT NULL DEFAULT 'top';
+            """);
+        await EnsureColumnAsync(context, "PipeComponentItems", "Layer", """
+            ALTER TABLE "PipeComponentItems" ADD COLUMN "Layer" TEXT NOT NULL DEFAULT 'top';
+            """);
+        await context.Database.ExecuteSqlRawAsync("""
+            UPDATE "PipeModuleItems" SET "Layer" = 'top' WHERE "Layer" IS NULL OR "Layer" NOT IN ('top', 'bottom');
+            UPDATE "PipeComponentItems" SET "Layer" = 'top' WHERE "Layer" IS NULL OR "Layer" NOT IN ('top', 'bottom');
+            """);
+    }
+
+    private static async Task EnsureColumnAsync(
+        DragChainDbContext context,
+        string tableName,
+        string columnName,
+        string alterSql)
+    {
+        var columns = await GetColumnsAsync(context, tableName);
+        if (!columns.Contains(columnName))
+        {
+            await context.Database.ExecuteSqlRawAsync(alterSql);
+        }
     }
 
     private static async Task<HashSet<string>> GetColumnsAsync(DragChainDbContext context, string tableName)

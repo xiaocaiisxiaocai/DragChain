@@ -112,13 +112,16 @@ public class PipeModulesController : ControllerBase
     private static List<PipeModuleItem> BuildItems(List<CreatePipeModuleItemDto> items) =>
         items
             .Where(item => item.PipeTypeId > 0 && item.Qty > 0)
-            .GroupBy(item => item.PipeTypeId)
+            .GroupBy(item => new { item.PipeTypeId, Layer = NormalizeLayer(item.Layer) })
             .Select(group => new PipeModuleItem
             {
-                PipeTypeId = group.Key,
-                Qty = group.Sum(item => item.Qty)
+                PipeTypeId = group.Key.PipeTypeId,
+                Qty = group.Sum(item => item.Qty),
+                Layer = group.Key.Layer
             })
             .ToList();
+
+    private static string NormalizeLayer(string? layer) => layer == "bottom" ? "bottom" : "top";
 
     private static PipeModuleDto MapToDto(PipeModule module) => new()
     {
@@ -135,6 +138,7 @@ public class PipeModulesController : ControllerBase
                 ModuleId = item.PipeModuleId,
                 PipeTypeId = item.PipeTypeId,
                 Qty = item.Qty,
+                Layer = NormalizeLayer(item.Layer),
                 PipeType = item.PipeType
             })
             .ToList()

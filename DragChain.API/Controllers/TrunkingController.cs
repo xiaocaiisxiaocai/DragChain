@@ -34,7 +34,8 @@ public class TrunkingController : ControllerBase
                 Model = t.Model,
                 Width = t.Width,
                 Height = t.Height,
-                CrossSection = t.CrossSection
+                CrossSection = t.CrossSection,
+                FillRatioLimit = NormalizeFillRatio(t.FillRatioLimit)
             })
             .ToListAsync();
         return rows;
@@ -82,18 +83,12 @@ public class TrunkingController : ControllerBase
             Model = dto.Model,
             Width = dto.Width,
             Height = dto.Height,
-            CrossSection = dto.CrossSection
+            CrossSection = dto.CrossSection,
+            FillRatioLimit = NormalizeFillRatio(dto.FillRatioLimit)
         };
         _context.TrunkingCatalog.Add(tk);
         await _context.SaveChangesAsync();
-        return CreatedAtAction(nameof(GetAll), new TrunkingCatalogDto
-        {
-            Id = tk.Id,
-            Model = tk.Model,
-            Width = tk.Width,
-            Height = tk.Height,
-            CrossSection = tk.CrossSection
-        });
+        return CreatedAtAction(nameof(GetAll), MapToDto(tk));
     }
 
     [HttpPut("{id}")]
@@ -106,6 +101,7 @@ public class TrunkingController : ControllerBase
         tk.Width = dto.Width;
         tk.Height = dto.Height;
         tk.CrossSection = dto.CrossSection;
+        tk.FillRatioLimit = NormalizeFillRatio(dto.FillRatioLimit);
 
         await _context.SaveChangesAsync();
         return NoContent();
@@ -143,4 +139,21 @@ public class TrunkingController : ControllerBase
             ? fillRatio
             : DefaultFillRatioLimit;
     }
+
+    private static decimal NormalizeFillRatio(decimal fillRatio)
+    {
+        return fillRatio > 0 && fillRatio <= 1
+            ? fillRatio
+            : DefaultFillRatioLimit;
+    }
+
+    private static TrunkingCatalogDto MapToDto(TrunkingCatalog tk) => new()
+    {
+        Id = tk.Id,
+        Model = tk.Model,
+        Width = tk.Width,
+        Height = tk.Height,
+        CrossSection = tk.CrossSection,
+        FillRatioLimit = NormalizeFillRatio(tk.FillRatioLimit)
+    };
 }

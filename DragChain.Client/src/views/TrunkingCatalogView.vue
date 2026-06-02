@@ -24,6 +24,15 @@ const columns: CatalogColumn[] = [
     minWidth: 180,
     readonly: true,
     calculate: row => Number(row.width || 0) * Number(row.height || 0)
+  },
+  {
+    prop: 'fillRatioLimit',
+    label: '有效利用率上限',
+    minWidth: 200,
+    precision: 2,
+    step: 0.01,
+    defaultValue: 0.6,
+    format: value => `${(Number(value || 0) * 100).toFixed(0)}%`
   }
 ];
 </script>

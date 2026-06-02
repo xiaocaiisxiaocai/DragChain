@@ -27,11 +27,38 @@ await using (var context = CreateContext(dbPath))
     var strict = await service.CalculateAsync(new TrunkingCalcRequest { FillRatio = 0.2m, Pipes = pipes });
     var defaulted = await service.CalculateAsync(new TrunkingCalcRequest { FillRatio = 0m, Pipes = pipes });
 
-    AssertEqual(0.48m, Math.Round(relaxed.ActualFillRatio, 4), "50% 上限下实际填充率");
-    AssertEqual(0.48m, Math.Round(strict.ActualFillRatio, 4), "20% 上限下实际填充率不能因为推荐线槽变更而变化");
-    AssertEqual("TK-40×40", strict.WeakSide?.SelectedTrunking?.Model, "20% 上限下仍应推荐更大的线槽");
+    AssertEqual(0.48m, Math.Round(relaxed.ActualFillRatio, 4), "请求上限不再覆盖型号上限时实际填充率");
+    AssertEqual(0.48m, Math.Round(strict.ActualFillRatio, 4), "请求上限变化不能改变推荐线槽的实际填充率");
+    AssertEqual("TK-25×25", strict.WeakSide?.SelectedTrunking?.Model, "请求上限变化不能覆盖线槽型号自己的上限");
     AssertEqual(0.6m, new TrunkingCalcRequest().FillRatio, "线槽请求默认有效利用率上限");
     AssertEqual(0.6m, defaulted.FillRatio, "未传有效上限时服务必须回退到 60%");
+
+    context.TrunkingCatalog.Single(t => t.Id == 1).FillRatioLimit = 0.10m;
+    context.TrunkingCatalog.Single(t => t.Id == 2).FillRatioLimit = 0.20m;
+    context.TrunkingCatalog.Single(t => t.Id == 3).FillRatioLimit = 0.60m;
+    await context.SaveChangesAsync();
+
+    var catalogLimited = await service.CalculateAsync(new TrunkingCalcRequest
+    {
+        FillRatio = 0.9m,
+        Pipes =
+        [
+            new() { PipeTypeId = 1, Qty = 1 },
+            new() { PipeTypeId = 2, Qty = 1 }
+        ]
+    });
+
+    AssertEqual("TK-40×25", catalogLimited.WeakSide?.SelectedTrunking?.Model, "推荐线槽必须使用各型号自己的有效利用率上限");
+    AssertEqual(0.2m, catalogLimited.WeakSide?.FillRatio, "分区结果必须返回推荐型号自己的有效利用率上限");
+    AssertEqual(0.2m, catalogLimited.WeakSide?.SelectedTrunking?.FillRatioLimit, "线槽 DTO 必须包含型号有效利用率上限");
+    AssertEqual(false, catalogLimited.WeakSide?.MatchResults.Single(t => t.Id == 1).OkFill, "型号自己的上限不足时必须不可用");
+    AssertEqual(true, catalogLimited.WeakSide?.MatchResults.Single(t => t.Id == 2).OkFill, "型号自己的上限足够时必须可用");
+
+    foreach (var trunking in context.TrunkingCatalog)
+    {
+        trunking.FillRatioLimit = 0.60m;
+    }
+    await context.SaveChangesAsync();
 
     var overLimit = await service.CalculateAsync(new TrunkingCalcRequest
     {
@@ -44,67 +71,8 @@ await using (var context = CreateContext(dbPath))
     });
 
     AssertEqual(0.1152m, Math.Round(overLimit.ActualFillRatio, 4), "实际填充率应按当前基准线槽显示为 11.5%");
-    AssertEqual("err", overLimit.ResultStatus, "实际填充率大于填充率上限时总览必须判定超限");
-    AssertEqual("err", overLimit.WeakSide?.ResultStatus, "弱电侧实际填充率大于上限时必须判定超限");
-
-    var slotted = await service.CalculateAsync(new TrunkingCalcRequest
-    {
-        FillRatio = 0.2m,
-        Slots =
-        [
-            new()
-            {
-                Id = "slot-lr",
-                Name = "左右槽位A",
-                Layout = "leftRight",
-                LeftTrunkingId = 1,
-                RightTrunkingId = 1,
-                Pipes =
-                [
-                    new() { PipeTypeId = 1, Qty = 1 },
-                    new() { PipeTypeId = 7, Qty = 1 },
-                    new() { PipeTypeId = 6, Qty = 1 }
-                ]
-            },
-            new()
-            {
-                Id = "slot-tb",
-                Name = "上下槽位A",
-                Layout = "topBottom",
-                Sections =
-                [
-                    new()
-                    {
-                        Key = "top",
-                        Label = "上层",
-                        SelectedTrunkingId = 1,
-                        Pipes = [new() { PipeTypeId = 1, Qty = 1 }]
-                    },
-                    new()
-                    {
-                        Key = "bottom",
-                        Label = "下层",
-                        SelectedTrunkingId = 1,
-                        Pipes = [new() { PipeTypeId = 1, Qty = 1 }]
-                    }
-                ]
-            }
-        ]
-    });
-
-    AssertEqual(2, slotted.Slots.Count, "必须返回两个槽位结果");
-    var leftRight = slotted.Slots[0];
-    AssertEqual("左右槽位A", leftRight.Name, "左右槽位必须保留名称");
-    AssertEqual(2, leftRight.Sections.Count, "左右槽位必须拆成左右两个分区");
-    AssertEqual("left", leftRight.Sections[0].Key, "弱电和编码器必须进入左侧");
-    AssertEqual(136m, leftRight.Sections[0].TotalArea, "左侧面积必须包含弱电和编码器");
-    AssertEqual("right", leftRight.Sections[1].Key, "强电必须进入右侧");
-    AssertEqual(64m, leftRight.Sections[1].TotalArea, "右侧面积必须只包含强电");
-
-    var topBottom = slotted.Slots[1];
-    AssertEqual(2, topBottom.Sections.Count, "上下槽位必须保留上下两个分区");
-    AssertEqual(36m, topBottom.Sections[0].TotalArea, "上层必须按用户分配计算");
-    AssertEqual(36m, topBottom.Sections[1].TotalArea, "同一管线允许重复放入下层并重复计算");
+    AssertEqual("ok", overLimit.ResultStatus, "请求上限不再覆盖型号上限");
+    AssertEqual("ok", overLimit.WeakSide?.ResultStatus, "弱电侧必须按线槽型号上限判定");
 
     var autoMatchedSlot = await service.CalculateAsync(new TrunkingCalcRequest
     {
@@ -118,113 +86,63 @@ await using (var context = CreateContext(dbPath))
                 Layout = "leftRight",
                 Pipes =
                 [
-                    new() { PipeTypeId = 1, Qty = 1 },
-                    new() { PipeTypeId = 2, Qty = 1 }
+                    new() { PipeTypeId = 1, Qty = 1, Layer = "top" },
+                    new() { PipeTypeId = 2, Qty = 1, Layer = "top" }
                 ]
             }
         ]
     });
 
     AssertEqual("ok", autoMatchedSlot.ResultStatus, "槽位未选择线槽时应自动匹配可用线槽");
-    AssertEqual("TK-40×25", autoMatchedSlot.Slots[0].Sections[0].SelectedTrunking?.Model, "槽位未选择线槽时应返回最符合填充率的线槽");
-    AssertEqual(0.072m, Math.Round(autoMatchedSlot.Slots[0].Sections[0].ActualFillRatio, 4), "自动匹配后实际填充率必须按匹配线槽计算");
+    AssertEqual(2, autoMatchedSlot.Slots.Count, "一个槽位必须生成上下两条线槽段");
+    AssertEqual("TK-25×25", autoMatchedSlot.Slots[0].Sections[0].SelectedTrunking?.Model, "槽位未选择线槽时应返回满足型号上限的最小线槽");
+    AssertEqual(0.1152m, Math.Round(autoMatchedSlot.Slots[0].Sections[0].ActualFillRatio, 4), "自动匹配后实际填充率必须按匹配线槽计算");
 
-    var selectedStable = await service.CalculateAsync(new TrunkingCalcRequest
+    var topDownSlots = await service.CalculateAsync(new TrunkingCalcRequest
     {
-        FillRatio = 0.1m,
         Slots =
         [
             new()
             {
-                Id = "slot-selected",
-                Name = "已选线槽",
-                Layout = "leftRight",
-                LeftTrunkingId = 1,
-                RightTrunkingId = 1,
+                Id = "slot-1",
+                Name = "槽位1",
                 Pipes =
                 [
-                    new() { PipeTypeId = 1, Qty = 1 },
-                    new() { PipeTypeId = 2, Qty = 1 }
+                    new() { PipeTypeId = 1, Qty = 1, Layer = "top" },
+                    new() { PipeTypeId = 7, Qty = 1, Layer = "top" },
+                    new() { PipeTypeId = 2, Qty = 1, Layer = "bottom" }
+                ]
+            },
+            new()
+            {
+                Id = "slot-2",
+                Name = "槽位2",
+                Pipes =
+                [
+                    new() { PipeTypeId = 3, Qty = 1, Layer = "top" },
+                    new() { PipeTypeId = 7, Qty = 1, Layer = "bottom" }
                 ]
             }
         ]
     });
 
-    var selectedRelaxed = await service.CalculateAsync(new TrunkingCalcRequest
-    {
-        FillRatio = 0.9m,
-        Slots =
-        [
-            new()
-            {
-                Id = "slot-selected",
-                Name = "已选线槽",
-                Layout = "leftRight",
-                LeftTrunkingId = 1,
-                RightTrunkingId = 1,
-                Pipes =
-                [
-                    new() { PipeTypeId = 1, Qty = 1 },
-                    new() { PipeTypeId = 2, Qty = 1 }
-                ]
-            }
-        ]
-    });
-
-    AssertEqual(0.1152m, Math.Round(selectedStable.Slots[0].Sections[0].ActualFillRatio, 4), "分区实际填充率必须按用户已选线槽计算");
-    AssertEqual(0.1152m, Math.Round(selectedRelaxed.Slots[0].Sections[0].ActualFillRatio, 4), "改变填充率上限不能改变已选线槽下的实际填充率");
-    AssertEqual("err", selectedStable.Slots[0].Sections[0].ResultStatus, "已选线槽实际填充率大于上限时必须超限");
-    AssertEqual("ok", selectedRelaxed.Slots[0].Sections[0].ResultStatus, "上限放宽后同一实际填充率可通过");
-    AssertEqual("TK-25×25", selectedStable.Slots[0].Sections[0].SelectedTrunking?.Model, "分区结果必须返回用户已选线槽");
-
-    var sectionOverride = await service.CalculateAsync(new TrunkingCalcRequest
-    {
-        FillRatio = 0.9m,
-        Slots =
-        [
-            new()
-            {
-                Id = "slot-fill-override",
-                Name = "单独填充率",
-                Layout = "leftRight",
-                LeftTrunkingId = 1,
-                RightTrunkingId = 1,
-                LeftFillRatio = 0.1m,
-                Pipes =
-                [
-                    new() { PipeTypeId = 1, Qty = 1 },
-                    new() { PipeTypeId = 2, Qty = 1 }
-                ]
-            }
-        ]
-    });
-
-    var sectionRelaxedOverride = await service.CalculateAsync(new TrunkingCalcRequest
-    {
-        FillRatio = 0.1m,
-        Slots =
-        [
-            new()
-            {
-                Id = "slot-fill-override",
-                Name = "单独填充率",
-                Layout = "leftRight",
-                LeftTrunkingId = 1,
-                RightTrunkingId = 1,
-                LeftFillRatio = 0.9m,
-                Pipes =
-                [
-                    new() { PipeTypeId = 1, Qty = 1 },
-                    new() { PipeTypeId = 2, Qty = 1 }
-                ]
-            }
-        ]
-    });
-
-    AssertEqual(0.1m, sectionOverride.Slots[0].Sections[0].FillRatio, "左侧分区必须使用单独填充率上限");
-    AssertEqual("err", sectionOverride.Slots[0].Sections[0].ResultStatus, "单独上限更严格时必须按单独上限判定");
-    AssertEqual(0.9m, sectionRelaxedOverride.Slots[0].Sections[0].FillRatio, "单独填充率应覆盖全局上限");
-    AssertEqual("ok", sectionRelaxedOverride.Slots[0].Sections[0].ResultStatus, "单独上限更宽松时必须按单独上限判定");
+    AssertEqual(3, topDownSlots.Slots.Count, "两个槽位从上到下必须生成三条线槽段");
+    AssertEqual(2, topDownSlots.SideSlots.Count, "两个槽位必须生成两组左右线槽结果");
+    AssertEqual("槽位1上", topDownSlots.Slots[0].Name, "第一条线槽段必须是槽位1上");
+    AssertEqual("槽位1下 + 槽位2上", topDownSlots.Slots[1].Name, "中间线槽段必须合并上槽位下和下槽位上");
+    AssertEqual("槽位2下", topDownSlots.Slots[2].Name, "最后一条线槽段必须是槽位2下");
+    AssertEqual(36m, topDownSlots.Slots[0].Sections.Single(section => section.Key.EndsWith("-left")).TotalArea, "槽位1上左侧必须包含弱电");
+    AssertEqual(64m, topDownSlots.Slots[0].Sections.Single(section => section.Key.EndsWith("-right")).TotalArea, "槽位1上右侧必须包含强电");
+    AssertEqual(100m, topDownSlots.Slots[1].Sections.Single(section => section.Key.EndsWith("-left")).TotalArea, "中间段左侧必须包含槽位1下加槽位2上的弱电");
+    AssertEqual(0m, topDownSlots.Slots[1].Sections.Single(section => section.Key.EndsWith("-right")).TotalArea, "中间段右侧无强电时必须为 0");
+    AssertEqual(0m, topDownSlots.Slots[2].Sections.Single(section => section.Key.EndsWith("-left")).TotalArea, "槽位2下左侧无弱电时必须为 0");
+    AssertEqual(64m, topDownSlots.Slots[2].Sections.Single(section => section.Key.EndsWith("-right")).TotalArea, "槽位2下右侧必须包含强电");
+    AssertEqual("槽位1", topDownSlots.SideSlots[0].Name, "第一组左右线槽结果必须对应槽位1");
+    AssertEqual(72m, topDownSlots.SideSlots[0].Sections.Single(section => section.Key.EndsWith("-left")).TotalArea, "槽位1左侧必须包含上下层弱电");
+    AssertEqual(64m, topDownSlots.SideSlots[0].Sections.Single(section => section.Key.EndsWith("-right")).TotalArea, "槽位1右侧必须包含上下层强电");
+    AssertEqual("槽位2", topDownSlots.SideSlots[1].Name, "第二组左右线槽结果必须对应槽位2");
+    AssertEqual(64m, topDownSlots.SideSlots[1].Sections.Single(section => section.Key.EndsWith("-left")).TotalArea, "槽位2左侧必须包含上下层弱电");
+    AssertEqual(64m, topDownSlots.SideSlots[1].Sections.Single(section => section.Key.EndsWith("-right")).TotalArea, "槽位2右侧必须包含上下层强电");
 }
 
 await using (var context = CreateContext(dbPath))
@@ -242,6 +160,59 @@ await using (var context = CreateContext(dbPath))
 
     AssertEqual(true, trunkingModels.Contains("TK-100×100"), "已有旧线槽型录时启动种子必须补齐新增默认线槽");
     AssertEqual(9, trunkingModels.Count, "补齐默认线槽不能重复插入已有型号");
+}
+
+await using (var context = CreateContext(dbPath))
+{
+    await context.Database.EnsureDeletedAsync();
+    await context.Database.EnsureCreatedAsync();
+    Seed(context);
+
+    context.PipeModules.Add(new PipeModule
+    {
+        Id = 1,
+        Name = "上层模块",
+        Description = "",
+        Items =
+        [
+            new() { PipeTypeId = 1, Qty = 1, Layer = "top" },
+            new() { PipeTypeId = 1, Qty = 2, Layer = "bottom" },
+            new() { PipeTypeId = 2, Qty = 1 }
+        ]
+    });
+    context.PipeComponents.Add(new PipeComponent
+    {
+        Id = 1,
+        Name = "默认上层元件",
+        Description = "",
+        Items =
+        [
+            new() { PipeTypeId = 1, Qty = 1, Layer = "bottom" },
+            new() { PipeTypeId = 2, Qty = 1 }
+        ]
+    });
+    await context.SaveChangesAsync();
+}
+
+await using (var context = CreateContext(dbPath))
+{
+    var moduleLayers = await context.PipeModuleItems
+        .Where(item => item.PipeModuleId == 1)
+        .OrderBy(item => item.Id)
+        .Select(item => item.Layer)
+        .ToListAsync();
+    var componentLayers = await context.PipeComponentItems
+        .Where(item => item.PipeComponentId == 1)
+        .OrderBy(item => item.Id)
+        .Select(item => item.Layer)
+        .ToListAsync();
+
+    AssertEqual(3, moduleLayers.Count, "同一管线选择不同上下标识时不能被合并掉");
+    AssertEqual("top", moduleLayers[0], "模块内管线必须保存上标识");
+    AssertEqual("bottom", moduleLayers[1], "模块内同一管线也必须能单独保存下标识");
+    AssertEqual("top", moduleLayers[2], "模块内管线默认必须是上");
+    AssertEqual("bottom", componentLayers[0], "元件内管线必须保存下标识");
+    AssertEqual("top", componentLayers[1], "元件内管线默认必须是上");
 }
 
 try
@@ -277,9 +248,9 @@ static void Seed(DragChainDbContext context)
     );
 
     context.TrunkingCatalog.AddRange(
-        new TrunkingCatalog { Id = 1, Model = "TK-25×25", Width = 25, Height = 25, CrossSection = 625 },
-        new TrunkingCatalog { Id = 2, Model = "TK-40×25", Width = 40, Height = 25, CrossSection = 1000 },
-        new TrunkingCatalog { Id = 3, Model = "TK-40×40", Width = 40, Height = 40, CrossSection = 1600 }
+        new TrunkingCatalog { Id = 1, Model = "TK-25×25", Width = 25, Height = 25, CrossSection = 625, FillRatioLimit = 0.60m },
+        new TrunkingCatalog { Id = 2, Model = "TK-40×25", Width = 40, Height = 25, CrossSection = 1000, FillRatioLimit = 0.60m },
+        new TrunkingCatalog { Id = 3, Model = "TK-40×40", Width = 40, Height = 40, CrossSection = 1600, FillRatioLimit = 0.60m }
     );
 
     context.SaveChanges();
@@ -296,7 +267,8 @@ static void SeedWithoutLargestTrunking(DragChainDbContext context)
             Model = t.Model,
             Width = t.Width,
             Height = t.Height,
-            CrossSection = t.CrossSection
+            CrossSection = t.CrossSection,
+            FillRatioLimit = t.FillRatioLimit
         });
     }
 

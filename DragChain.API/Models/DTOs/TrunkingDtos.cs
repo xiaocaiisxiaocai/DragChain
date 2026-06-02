@@ -23,6 +23,7 @@ public class TrunkingCalcResponse
     public TrunkingSideResultDto? WeakSide { get; set; }
     public TrunkingSideResultDto? StrongSide { get; set; }
     public List<TrunkingSlotResultDto> Slots { get; set; } = new();
+    public List<TrunkingSlotResultDto> SideSlots { get; set; } = new();
     public TrunkingStepsDto Steps { get; set; } = new();
     public string ResultStatus { get; set; } = string.Empty;
     public string ResultMessage { get; set; } = string.Empty;
@@ -82,6 +83,7 @@ public class TrunkingMatchResultDto
     public decimal Width { get; set; }
     public decimal Height { get; set; }
     public decimal CrossSection { get; set; }
+    public decimal FillRatioLimit { get; set; }
     public decimal ActualFillRatio { get; set; }
     public bool OkFill { get; set; }
     public bool IsRecommended { get; set; }
@@ -95,6 +97,7 @@ public class TrunkingCatalogDto
     public decimal Width { get; set; }
     public decimal Height { get; set; }
     public decimal CrossSection { get; set; }
+    public decimal FillRatioLimit { get; set; }
 }
 
 public class TrunkingSettingsDto
@@ -121,6 +124,7 @@ public class CreateTrunkingCatalogDto
     public decimal Width { get; set; }
     public decimal Height { get; set; }
     public decimal CrossSection { get; set; }
+    public decimal FillRatioLimit { get; set; } = 0.60m;
 }
 
 public class UpdateTrunkingCatalogDto
@@ -132,4 +136,5 @@ public class UpdateTrunkingCatalogDto
     public decimal Width { get; set; }
     public decimal Height { get; set; }
     public decimal CrossSection { get; set; }
+    public decimal FillRatioLimit { get; set; } = 0.60m;
 }

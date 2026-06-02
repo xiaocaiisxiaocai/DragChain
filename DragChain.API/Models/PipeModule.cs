@@ -31,6 +31,9 @@ public class PipeModuleItem
 
     public int Qty { get; set; } = 1;
 
+    [MaxLength(20)]
+    public string Layer { get; set; } = "top";
+
     public PipeModule? PipeModule { get; set; }
 
     public PipeType? PipeType { get; set; }

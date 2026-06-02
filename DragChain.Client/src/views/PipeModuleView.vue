@@ -33,6 +33,9 @@
             <el-table-column label="重量 kg/m" width="120">
               <template #default="{ row: item }">{{ item.pipeType?.weight ?? '-' }}</template>
             </el-table-column>
+            <el-table-column label="上下标识" width="100">
+              <template #default="{ row: item }">{{ getLayerMarkLabel(item.layer) }}</template>
+            </el-table-column>
             <el-table-column prop="qty" label="模块内数量" width="110" />
           </el-table>
         </template>
@@ -65,6 +68,14 @@
                   :value="pipe.id"
                 />
               </el-select>
+              <el-select v-model="item.layer" class="module-layer-select" placeholder="选择上下">
+                <el-option
+                  v-for="option in LAYER_MARK_OPTIONS"
+                  :key="option.value"
+                  :label="option.label"
+                  :value="option.value"
+                />
+              </el-select>
               <el-input-number v-model="item.qty" :min="1" :step="1" controls-position="right" />
               <el-button link type="danger" @click="removeItem(index)">删除</el-button>
             </div>
@@ -88,6 +99,7 @@ import PageShell from '../components/PageShell.vue';
 import { pipeModulesApi, type CreatePipeModule } from '../api/pipeModules';
 import { usePipeLibrary } from '../composables/usePipeLibrary';
 import type { PipeModule } from '../types';
+import { getLayerMarkLabel, LAYER_MARK_OPTIONS, normalizeLayerMark } from '../utils/layerMark';
 import { getPipeDisplayLabel } from '../utils/pipeType';
 
 const rows = ref<PipeModule[]>([]);
@@ -120,14 +132,14 @@ async function load() {
 
 function describeModule(module: PipeModule) {
   return module.items
-    .map(item => `${item.pipeType?.name || `#${item.pipeTypeId}`}×${item.qty}`)
+    .map(item => `${item.pipeType?.name || `#${item.pipeTypeId}`}(${getLayerMarkLabel(item.layer)})×${item.qty}`)
     .join('，');
 }
 
 function resetForm() {
   form.name = '';
   form.description = '';
-  form.items = [{ pipeTypeId: pipeLib.value[0]?.id || 0, qty: 1 }];
+  form.items = [{ pipeTypeId: pipeLib.value[0]?.id || 0, layer: 'top', qty: 1 }];
 }
 
 function startCreate() {
@@ -140,12 +152,12 @@ function startEdit(row: PipeModule) {
   editingId.value = row.id;
   form.name = row.name;
   form.description = row.description;
-  form.items = row.items.map(item => ({ pipeTypeId: item.pipeTypeId, qty: item.qty }));
+  form.items = row.items.map(item => ({ pipeTypeId: item.pipeTypeId, layer: normalizeLayerMark(item.layer), qty: item.qty }));
   dialogVisible.value = true;
 }
 
 function addItem() {
-  form.items.push({ pipeTypeId: pipeLib.value[0]?.id || 0, qty: 1 });
+  form.items.push({ pipeTypeId: pipeLib.value[0]?.id || 0, layer: 'top', qty: 1 });
 }
 
 function removeItem(index: number) {
@@ -156,7 +168,9 @@ async function save() {
   const payload = {
     name: form.name.trim(),
     description: form.description.trim(),
-    items: form.items.filter(item => item.pipeTypeId > 0 && item.qty > 0)
+    items: form.items
+      .filter(item => item.pipeTypeId > 0 && item.qty > 0)
+      .map(item => ({ ...item, layer: normalizeLayerMark(item.layer) }))
   };
 
   if (!payload.name) {

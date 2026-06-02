@@ -6,6 +6,7 @@ export interface CreateTrunkingDto {
   width: number;
   height: number;
   crossSection: number;
+  fillRatioLimit: number;
 }
 
 export type UpdateTrunkingDto = CreateTrunkingDto;

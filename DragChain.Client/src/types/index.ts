@@ -42,6 +42,7 @@ export interface PipeModuleItem {
   moduleId: number;
   pipeTypeId: number;
   qty: number;
+  layer: 'top' | 'bottom';
   pipeType?: PipeType;
 }
 
@@ -58,6 +59,7 @@ export interface PipeComponentItem {
   componentId: number;
   pipeTypeId: number;
   qty: number;
+  layer: 'top' | 'bottom';
   pipeType?: PipeType;
 }
 
@@ -177,12 +179,13 @@ export interface TrunkingCatalog {
   width: number;
   height: number;
   crossSection: number;
+  fillRatioLimit: number;
 }
 
 // 线槽计算请求
 export interface TrunkingCalcRequest {
   selectedTrunkingId: number;
-  pipes: { pipeTypeId: number; qty: number }[];
+  pipes: { pipeTypeId: number; qty: number; layer?: 'top' | 'bottom' }[];
   fillRatio?: number;
   slots?: TrunkingSlotRequest[];
 }
@@ -190,12 +193,12 @@ export interface TrunkingCalcRequest {
 export interface TrunkingSlotRequest {
   id: string;
   name: string;
-  layout: 'leftRight' | 'topBottom';
+  layout: 'ordered' | 'leftRight' | 'topBottom';
   leftTrunkingId?: number | null;
   rightTrunkingId?: number | null;
   leftFillRatio?: number | null;
   rightFillRatio?: number | null;
-  pipes?: { pipeTypeId: number; qty: number }[];
+  pipes?: { pipeTypeId: number; qty: number; layer?: 'top' | 'bottom' }[];
   sections?: TrunkingSlotSectionRequest[];
 }
 
@@ -204,7 +207,7 @@ export interface TrunkingSlotSectionRequest {
   label: string;
   selectedTrunkingId?: number | null;
   fillRatio?: number | null;
-  pipes: { pipeTypeId: number; qty: number }[];
+  pipes: { pipeTypeId: number; qty: number; layer?: 'top' | 'bottom' }[];
 }
 
 export interface TrunkingSettings {
@@ -233,6 +236,7 @@ export interface TrunkingCalcResponse {
   weakSide: TrunkingSideResult | null;
   strongSide: TrunkingSideResult | null;
   slots: TrunkingSlotResult[];
+  sideSlots: TrunkingSlotResult[];
   steps: TrunkingSteps;
   resultStatus: 'ok' | 'warn' | 'err';
   resultMessage: string;
@@ -241,7 +245,7 @@ export interface TrunkingCalcResponse {
 export interface TrunkingSlotResult {
   id: string;
   name: string;
-  layout: 'leftRight' | 'topBottom';
+  layout: 'ordered' | 'leftRight' | 'topBottom';
   sections: TrunkingSideResult[];
   resultStatus: 'ok' | 'warn' | 'err';
   resultMessage: string;
@@ -267,6 +271,7 @@ export interface TrunkingMatchResult {
   width: number;
   height: number;
   crossSection: number;
+  fillRatioLimit: number;
   actualFillRatio: number;
   okFill: boolean;
   isRecommended: boolean;

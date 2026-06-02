@@ -34,7 +34,11 @@
         :width="column.width"
         :min-width="column.minWidth"
         show-overflow-tooltip
-      />
+      >
+        <template #default="{ row }">
+          {{ column.format ? column.format(row[column.prop], row) : row[column.prop] }}
+        </template>
+      </el-table-column>
       <el-table-column label="操作" width="150" fixed="right" align="center">
         <template #default="{ row }">
           <el-button link type="primary" @click="startEdit(row)">编辑</el-button>

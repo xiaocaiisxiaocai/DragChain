@@ -25,4 +25,5 @@ public class PipeItemDto
 {
     public int PipeTypeId { get; set; }
     public int Qty { get; set; }
+    public string Layer { get; set; } = "top";
 }

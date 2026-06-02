@@ -1,7 +1,7 @@
 import type { ActivePipe } from '../types';
 
-export type SlotLayout = 'leftRight' | 'topBottom';
-export type SlotSectionKey = 'left' | 'right' | 'top' | 'bottom';
+export type SlotLayout = 'ordered' | 'leftRight' | 'topBottom';
+export type SlotSectionKey = 'top' | 'bottom';
 
 export interface LocalSlotSection {
   key: 'top' | 'bottom';
@@ -24,8 +24,8 @@ export interface LocalSlot {
 }
 
 export interface TrunkingRuntimeState {
-  activeSlotLayout: SlotLayout;
   slots: LocalSlot[];
+  nextSlotNumber?: number;
 }
 
 let state: TrunkingRuntimeState | null = null;

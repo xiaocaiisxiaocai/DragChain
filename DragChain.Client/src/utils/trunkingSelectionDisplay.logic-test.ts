@@ -19,9 +19,9 @@ const modules: PipeModule[] = [
     name: '阀岛模块',
     description: '',
     items: [
-      { id: 1, moduleId: 10, pipeTypeId: 1, qty: 1 },
-      { id: 2, moduleId: 10, pipeTypeId: 2, qty: 2 },
-      { id: 3, moduleId: 10, pipeTypeId: 3, qty: 1 }
+      { id: 1, moduleId: 10, pipeTypeId: 1, qty: 1, layer: 'top' },
+      { id: 2, moduleId: 10, pipeTypeId: 2, qty: 2, layer: 'top' },
+      { id: 3, moduleId: 10, pipeTypeId: 3, qty: 1, layer: 'bottom' }
     ]
   }
 ];
@@ -32,8 +32,8 @@ const components: PipeComponent[] = [
     name: '阀组元件',
     description: '',
     items: [
-      { id: 4, componentId: 20, pipeTypeId: 1, qty: 2 },
-      { id: 5, componentId: 20, pipeTypeId: 2, qty: 1 }
+      { id: 4, componentId: 20, pipeTypeId: 1, qty: 2, layer: 'top' },
+      { id: 5, componentId: 20, pipeTypeId: 2, qty: 1, layer: 'top' }
     ]
   }
 ];
@@ -62,16 +62,19 @@ if (moduleRow.children.length !== 3 || moduleRow.children[1].areaText !== '600' 
 if (moduleRow.children[1].typeLabel !== '强电电缆' || moduleRow.children[1].sideLabel !== '右侧') {
   throw new Error('模块子项必须显示强电和右侧');
 }
-if (moduleRow.children[2].typeLabel !== '气管' || moduleRow.children[2].sideLabel !== '左侧') {
-  throw new Error('模块子项必须显示气管和左侧');
+if (moduleRow.children[2].typeLabel !== '气管' || moduleRow.children[2].sideLabel !== '左侧' || moduleRow.children[2].layerLabel !== '下') {
+  throw new Error('模块子项必须显示气管、左侧和上下标识');
 }
 
 const componentRow = rows[2];
 if (componentRow.typeLabel !== '元件' || componentRow.sideLabel !== '混合') {
   throw new Error('元件行必须显示类型和侧别');
 }
-if (componentRow.children.length !== 2 || componentRow.children[0].unitQtyText !== '2/元件' || componentRow.children[0].qty !== 4) {
+if (componentRow.children.length !== 2 || componentRow.children[0].unitQtyText !== '2' || componentRow.children[0].qty !== 4) {
   throw new Error('元件展开详情必须显示子管线和展开后总数量');
+}
+if (componentRow.children[0].layerLabel !== '上') {
+  throw new Error('元件展开详情必须显示上下标识');
 }
 
 const chainRows = createTrunkingSelectionRows(activePipes, pipeLib, modules, components, { areaMode: 'circle' });
@@ -85,6 +88,6 @@ if (summary.totalAreaText !== '1,325' || summary.leftAreaText !== '525' || summa
 }
 
 const emptySummary = summarizeTrunkingSelectionRows([]);
-if (emptySummary.totalAreaText !== '-' || emptySummary.leftAreaText !== '-' || emptySummary.rightAreaText !== '-') {
-  throw new Error('空线槽清单面积汇总必须显示占位');
+if (emptySummary.totalAreaText !== '0' || emptySummary.leftAreaText !== '0' || emptySummary.rightAreaText !== '0') {
+  throw new Error('空线槽清单面积汇总必须显示 0');
 }

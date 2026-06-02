@@ -5,6 +5,7 @@ export interface TrunkingSelectionDetailRow {
   kind: 'module-item';
   name: string;
   typeLabel: string;
+  layerLabel: string;
   sideLabel: string;
   qty: number;
   unitQtyText: string;
@@ -71,9 +72,10 @@ export function createTrunkingSelectionRows(
             kind: 'module-item' as const,
             name: pipe?.name || `#${item.pipeTypeId}`,
             typeLabel: getPipeTypeLabel(pipe?.type),
+            layerLabel: getLayerLabel(item.layer),
             sideLabel: getSideLabel(pipe?.type),
             qty: totalQty,
-            unitQtyText: `${item.qty}/模块`,
+            unitQtyText: formatNumber(item.qty),
             sizeText: pipe ? formatDiameter(pipe.diameter) : '-',
             areaText: area > 0 ? formatArea(area) : '-',
             canExpand: false as const
@@ -117,9 +119,10 @@ export function createTrunkingSelectionRows(
             kind: 'module-item' as const,
             name: pipe?.name || `#${item.pipeTypeId}`,
             typeLabel: getPipeTypeLabel(pipe?.type),
+            layerLabel: getLayerLabel(item.layer),
             sideLabel: getSideLabel(pipe?.type),
             qty: totalQty,
-            unitQtyText: `${item.qty}/元件`,
+            unitQtyText: formatNumber(item.qty),
             sizeText: pipe ? formatDiameter(pipe.diameter) : '-',
             areaText: area > 0 ? formatArea(area) : '-',
             canExpand: false as const
@@ -215,7 +218,7 @@ function formatArea(value: number) {
 }
 
 function formatSummaryArea(value: number) {
-  if (value <= 0) return '-';
+  if (value <= 0) return '0';
   return formatArea(value).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
@@ -246,4 +249,8 @@ function getPipeTypeLabel(type?: string) {
 
 function getSideLabel(type?: string) {
   return type === 'strong_cable' ? '右侧' : '左侧';
+}
+
+function getLayerLabel(layer?: string | null) {
+  return layer === 'bottom' ? '下' : '上';
 }

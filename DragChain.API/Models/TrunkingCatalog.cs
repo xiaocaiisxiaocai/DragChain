@@ -21,4 +21,7 @@ public class TrunkingCatalog
 
     [Column(TypeName = "decimal(10,2)")]
     public decimal CrossSection { get; set; }
+
+    [Column(TypeName = "decimal(5,2)")]
+    public decimal FillRatioLimit { get; set; } = 0.60m;
 }
