@@ -8,7 +8,7 @@
       <div class="toolbar-actions">
         <el-input v-model="keyword" clearable placeholder="搜索管线" :prefix-icon="Search" class="search-input" />
         <el-button type="primary" :icon="Plus" @click="startCreate">新增</el-button>
-        <el-button :icon="Refresh" @click="load">刷新</el-button>
+        <el-button :icon="Refresh" :loading="loading" @click="load">刷新</el-button>
       </div>
     </template>
 
@@ -31,7 +31,7 @@
     </el-table>
 
     <el-dialog v-model="dialogVisible" :title="editingId ? '编辑管线' : '新增管线'" width="560px">
-      <el-form :model="form" label-width="110px">
+      <el-form :model="form" label-width="110px" class="dialog-form">
         <el-form-item label="管线名称"><el-input v-model="form.name" /></el-form-item>
         <el-form-item label="分类">
           <el-select v-model="form.type" class="full-input">
@@ -136,3 +136,21 @@ async function remove(id: number) {
 
 onMounted(load);
 </script>
+
+<style scoped>
+.search-input {
+  width: 260px;
+}
+
+.full-input {
+  width: 100%;
+}
+
+.dialog-form :deep(.el-form-item) {
+  margin-bottom: 24px;
+}
+
+.dialog-form :deep(.el-form-item:last-child) {
+  margin-bottom: 0;
+}
+</style>

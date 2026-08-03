@@ -1,34 +1,23 @@
-import { computed, ref } from 'vue';
 import { pipeModulesApi } from '../api/pipeModules';
 import type { PipeModule } from '../types';
-
-const pipeModules = ref<PipeModule[]>([]);
-const moduleLoading = ref(false);
+import { useResource } from './useResource';
 
 export function usePipeModules() {
-  const moduleMap = computed(() =>
-    pipeModules.value.reduce(
-      (acc, module) => {
-        acc[module.id] = module;
-        return acc;
-      },
-      {} as Record<number, PipeModule>
-    )
-  );
-
-  async function loadPipeModules() {
-    moduleLoading.value = true;
-    try {
-      pipeModules.value = await pipeModulesApi.getAll();
-    } finally {
-      moduleLoading.value = false;
-    }
-  }
+  const {
+    data: pipeModules,
+    dataMap: moduleMap,
+    loading: moduleLoading,
+    error,
+    load: loadPipeModules,
+    reset
+  } = useResource<PipeModule>(pipeModulesApi);
 
   return {
     pipeModules,
     moduleMap,
     moduleLoading,
-    loadPipeModules
+    error,
+    loadPipeModules,
+    reset
   };
 }

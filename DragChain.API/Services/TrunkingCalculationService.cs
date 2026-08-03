@@ -205,7 +205,7 @@ public class TrunkingCalculationService : ITrunkingCalculationService
         List<TrunkingCatalog> trunkingList,
         decimal fillRatio)
     {
-        var slotResults = BuildOrderedTrunkingSegments(request.Slots)
+        var slotResults = BuildOrderedTrunkingSegments(request.Slots, request.SlotOrder)
             .Select(segment => CalculateSegment(segment, pipeMap, trunkingList, fillRatio))
             .ToList();
         var sideSlotResults = BuildSlotSideSegments(request.Slots)
@@ -292,11 +292,17 @@ public class TrunkingCalculationService : ITrunkingCalculationService
         };
     }
 
-    private static List<TrunkingSegmentRequest> BuildOrderedTrunkingSegments(List<TrunkingSlotRequestDto> slots)
+    private static List<TrunkingSegmentRequest> BuildOrderedTrunkingSegments(
+        List<TrunkingSlotRequestDto> slots,
+        string? slotOrder)
     {
-        var orderedSlots = slots
+        // 旧请求没有 SlotOrder，保持其原始顺序；仅新契约明确声明 bottomToTop 时反转。
+        var activeSlots = slots
             .Where(slot => !string.IsNullOrWhiteSpace(slot.Name) || slot.Pipes.Count > 0 || slot.Sections.Count > 0)
             .ToList();
+        var orderedSlots = string.Equals(slotOrder, "bottomToTop", StringComparison.Ordinal)
+            ? activeSlots.AsEnumerable().Reverse().ToList()
+            : activeSlots;
         var segments = new List<TrunkingSegmentRequest>();
         if (orderedSlots.Count == 0) return segments;
 
@@ -339,17 +345,26 @@ public class TrunkingCalculationService : ITrunkingCalculationService
 
     private static List<TrunkingSegmentRequest> BuildSlotSideSegments(List<TrunkingSlotRequestDto> slots)
     {
-        return slots
+        var orderedSlots = slots
             .Where(slot => !string.IsNullOrWhiteSpace(slot.Name) || slot.Pipes.Count > 0 || slot.Sections.Count > 0)
-            .Select((slot, index) => new TrunkingSegmentRequest
-            {
-                Id = $"slot-side-{index + 1}",
-                Name = GetSlotName(slot, index + 1),
-                Pipes = MergePipeItems(
-                    GetSlotLayerPipes(slot, "top")
-                        .Concat(GetSlotLayerPipes(slot, "bottom")))
-            })
             .ToList();
+
+        if (orderedSlots.Count == 0) return new List<TrunkingSegmentRequest>();
+
+        // 右侧方案中，左右侧边线槽是贯通竖槽：左侧汇总弱电，右侧汇总强电。
+        var sidePipes = orderedSlots
+            .SelectMany(slot => GetSlotLayerPipes(slot, "top")
+                .Concat(GetSlotLayerPipes(slot, "bottom")));
+
+        return new List<TrunkingSegmentRequest>
+        {
+            new()
+            {
+                Id = "slot-side-vertical",
+                Name = "左右竖向线槽",
+                Pipes = MergePipeItems(sidePipes)
+            }
+        };
     }
 
     private static List<PipeItemDto> GetSlotLayerPipes(TrunkingSlotRequestDto slot, string layer)

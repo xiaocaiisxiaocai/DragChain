@@ -8,7 +8,7 @@
       <div class="toolbar-actions">
         <el-input v-model="keyword" clearable placeholder="搜索模块或管线" :prefix-icon="Search" class="search-input" />
         <el-button type="primary" :icon="Plus" @click="startCreate">新增模块</el-button>
-        <el-button :icon="Refresh" @click="load">刷新</el-button>
+        <el-button :icon="Refresh" :loading="loading" @click="loadAll">刷新</el-button>
       </div>
     </template>
 
@@ -54,7 +54,7 @@
     </el-table>
 
     <el-dialog v-model="dialogVisible" :title="editingId ? '编辑模块' : '新增模块'" width="760px">
-      <el-form :model="form" label-width="90px">
+      <el-form :model="form" label-width="90px" class="dialog-form">
         <el-form-item label="模块名称"><el-input v-model="form.name" /></el-form-item>
         <el-form-item label="说明"><el-input v-model="form.description" type="textarea" :rows="2" /></el-form-item>
         <el-form-item label="包含管线">
@@ -76,7 +76,7 @@
                   :value="option.value"
                 />
               </el-select>
-              <el-input-number v-model="item.qty" :min="1" :step="1" controls-position="right" />
+              <el-input-number v-model="item.qty" :min="1" :step="1" controls-position="right" class="module-qty-input" />
               <el-button link type="danger" @click="removeItem(index)">删除</el-button>
             </div>
             <el-button :icon="Plus" @click="addItem">添加管线</el-button>
@@ -128,6 +128,10 @@ async function load() {
   } finally {
     loading.value = false;
   }
+}
+
+async function loadAll() {
+  await Promise.all([loadPipeLib(), load()]);
 }
 
 function describeModule(module: PipeModule) {
@@ -199,7 +203,33 @@ async function remove(id: number) {
   await load();
 }
 
-onMounted(async () => {
-  await Promise.all([loadPipeLib(), load()]);
-});
+onMounted(loadAll);
 </script>
+
+<style scoped>
+.module-editor-row {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) 92px 82px 38px;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.module-pipe-select,
+.module-layer-select,
+.module-qty-input {
+  width: 100%;
+}
+
+.module-editor-row:last-child {
+  margin-bottom: 0;
+}
+
+.dialog-form :deep(.el-form-item) {
+  margin-bottom: 24px;
+}
+
+.dialog-form :deep(.el-form-item:last-child) {
+  margin-bottom: 0;
+}
+</style>

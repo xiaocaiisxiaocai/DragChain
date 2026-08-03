@@ -14,7 +14,7 @@
           class="search-input"
         />
         <el-button type="primary" :icon="Plus" @click="startCreate">新增</el-button>
-        <el-button :icon="Refresh" @click="load">刷新</el-button>
+        <el-button :icon="Refresh" :loading="loading" @click="load">刷新</el-button>
       </div>
     </template>
 

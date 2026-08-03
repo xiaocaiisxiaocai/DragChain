@@ -1,34 +1,16 @@
-import { computed, ref } from 'vue';
 import { pipeLibraryApi } from '../api/pipeLibrary';
 import type { PipeType } from '../types';
-
-const pipeLib = ref<PipeType[]>([]);
-const loading = ref(false);
+import { useResource } from './useResource';
 
 export function usePipeLibrary() {
-  const pipeMap = computed(() =>
-    pipeLib.value.reduce(
-      (acc, pipe) => {
-        acc[pipe.id] = pipe;
-        return acc;
-      },
-      {} as Record<number, PipeType>
-    )
-  );
-
-  async function loadPipeLib() {
-    loading.value = true;
-    try {
-      pipeLib.value = await pipeLibraryApi.getAll();
-    } finally {
-      loading.value = false;
-    }
-  }
+  const { data: pipeLib, dataMap: pipeMap, loading, error, load: loadPipeLib, reset } = useResource<PipeType>(pipeLibraryApi);
 
   return {
     pipeLib,
     pipeMap,
     loading,
-    loadPipeLib
+    error,
+    loadPipeLib,
+    reset
   };
 }

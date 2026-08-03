@@ -9,6 +9,6 @@ public class AppSetting
     public string Key { get; set; } = string.Empty;
 
     [Required]
-    [MaxLength(500)]
+    [MaxLength(200000)]
     public string Value { get; set; } = string.Empty;
 }

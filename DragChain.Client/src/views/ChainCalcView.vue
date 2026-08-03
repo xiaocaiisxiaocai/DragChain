@@ -23,7 +23,7 @@
           <template #header>
             <div class="card-header-row">
               <span>管线清单</span>
-              <el-button size="small" type="primary" @click="showAddDialog = true">新增管线</el-button>
+              <el-button size="small" type="primary" :loading="pipeSourceRefreshing" @click="openAddDialog">新增管线</el-button>
             </div>
           </template>
           <el-table
@@ -274,7 +274,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onActivated, onMounted, ref, watch } from 'vue';
 import AddPipeDialog from '../components/AddPipeDialog.vue';
 import MetricItem from '../widgets/MetricItem.vue';
 import PageShell from '../components/PageShell.vue';
@@ -300,6 +300,8 @@ const calcResult = ref<CalculationResponse | null>(null);
 const calcLoading = ref(false);
 const calcError = ref('');
 const showAddDialog = ref(false);
+const pipeSourceRefreshing = ref(false);
+const mounted = ref(false);
 
 const coreCount = computed(
   () => {
@@ -389,6 +391,28 @@ function removePipe(index: number) {
   activePipes.value.splice(index, 1);
 }
 
+async function refreshPipeSources() {
+  await Promise.all([loadPipeLib(), loadPipeModules(), loadPipeComponents()]);
+}
+
+async function refreshPipeSourcesForPicker() {
+  pipeSourceRefreshing.value = true;
+  try {
+    await refreshPipeSources();
+    return true;
+  } catch (err) {
+    calcError.value = err instanceof Error ? err.message : '管线库加载失败';
+    return false;
+  } finally {
+    pipeSourceRefreshing.value = false;
+  }
+}
+
+async function openAddDialog() {
+  if (!await refreshPipeSourcesForPicker()) return;
+  showAddDialog.value = true;
+}
+
 function selectionRowClass({ row }: { row: { kind?: string } }) {
   return row.kind === 'module-item' ? 'module-detail-row' : '';
 }
@@ -425,7 +449,14 @@ watch([brand, sensorCount, magnetCount, motionType, stroke, lmOffset, activePipe
 }, { deep: true });
 
 onMounted(async () => {
-  await Promise.all([loadPipeLib(), loadPipeModules(), loadPipeComponents()]);
+  await refreshPipeSources();
+  await calculate();
+  mounted.value = true;
+});
+
+onActivated(async () => {
+  if (!mounted.value) return;
+  await refreshPipeSources();
   await calculate();
 });
 </script>

@@ -1,34 +1,23 @@
-import { computed, ref } from 'vue';
 import { pipeComponentsApi } from '../api/pipeComponents';
 import type { PipeComponent } from '../types';
-
-const pipeComponents = ref<PipeComponent[]>([]);
-const componentLoading = ref(false);
+import { useResource } from './useResource';
 
 export function usePipeComponents() {
-  const componentMap = computed(() =>
-    pipeComponents.value.reduce(
-      (acc, component) => {
-        acc[component.id] = component;
-        return acc;
-      },
-      {} as Record<number, PipeComponent>
-    )
-  );
-
-  async function loadPipeComponents() {
-    componentLoading.value = true;
-    try {
-      pipeComponents.value = await pipeComponentsApi.getAll();
-    } finally {
-      componentLoading.value = false;
-    }
-  }
+  const {
+    data: pipeComponents,
+    dataMap: componentMap,
+    loading: componentLoading,
+    error,
+    load: loadPipeComponents,
+    reset
+  } = useResource<PipeComponent>(pipeComponentsApi);
 
   return {
     pipeComponents,
     componentMap,
     componentLoading,
-    loadPipeComponents
+    error,
+    loadPipeComponents,
+    reset
   };
 }

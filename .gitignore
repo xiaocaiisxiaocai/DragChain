@@ -13,6 +13,9 @@ obj/
 node_modules/
 dist/
 *.log
+*.tsbuildinfo
+test-results/
+.playwright-cli/
 *.lscache
 publish/
 DragChain.API/wwwroot/

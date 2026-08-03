@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 
 namespace DragChain.API.Models.DTOs;
 
@@ -6,6 +7,7 @@ public class TrunkingCalcRequest
 {
     public int SelectedTrunkingId { get; set; }
     public decimal FillRatio { get; set; } = 0.60m;
+    public string SlotOrder { get; set; } = "topToBottom";
     public List<PipeItemDto> Pipes { get; set; } = new();
     public List<TrunkingSlotRequestDto> Slots { get; set; } = new();
 }
@@ -103,6 +105,16 @@ public class TrunkingCatalogDto
 public class TrunkingSettingsDto
 {
     public decimal FillRatio { get; set; } = 0.60m;
+}
+
+public class TrunkingSavedSelectionDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public DateTime SavedAt { get; set; }
+    public TrunkingCalcRequest Request { get; set; } = new();
+    public TrunkingCalcResponse? Result { get; set; }
+    public JsonElement? SourceSlots { get; set; }
 }
 
 public class TrunkingStepsDto

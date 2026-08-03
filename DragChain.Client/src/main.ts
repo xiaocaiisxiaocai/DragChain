@@ -6,8 +6,15 @@ import 'element-plus/dist/index.css';
 import './style.css';
 import App from './App.vue';
 import { router } from './router';
+import { handleGlobalError, handleUnhandledRejection } from './utils/errorHandler';
 
-createApp(App)
+const app = createApp(App);
+
+// 注册全局错误处理器
+app.config.errorHandler = handleGlobalError;
+window.addEventListener('unhandledrejection', handleUnhandledRejection);
+
+app
   .use(createPinia())
   .use(router)
   .use(ElementPlus, { locale: zhCn })

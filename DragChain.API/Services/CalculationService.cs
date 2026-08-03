@@ -434,14 +434,17 @@ public class CalculationService : ICalculationService
         if (finalEntry.Model != null)
         {
             string finalFullModel = $"{finalEntry.Model.BaseModel}{finalEntry.Suffix}";
-            response.PreliminaryModel = new SelectedModelDto
+            if (prelimEntry.Model is { } preliminaryModel)
             {
-                Model = prelimFullModel,
-                Lp = prelimEntry.Lp,
-                Lk = prelimLk,
-                RecRadius = prelimEntry.Model.InnerHeight, // ME 不存储单型号 RecRadius
-                InnerArea = prelimEntry.Model.InnerArea
-            };
+                response.PreliminaryModel = new SelectedModelDto
+                {
+                    Model = prelimFullModel,
+                    Lp = prelimEntry.Lp,
+                    Lk = prelimLk,
+                    RecRadius = preliminaryModel.InnerHeight, // ME 不存储单型号 RecRadius
+                    InnerArea = preliminaryModel.InnerArea
+                };
+            }
             response.FinalModel = new SelectedModelDto
             {
                 Model = finalFullModel,

@@ -5,10 +5,23 @@
         <el-card shadow="never" class="control-card">
           <template #header>
             <div class="card-header-row">
-              <span>选型参数</span>
-              <el-button size="small" type="primary" @click="addSlot">
-                添加槽位
-              </el-button>
+              <span class="selection-title">
+                <span>选型参数</span>
+                <el-tag size="small" :type="loadedSavedId ? 'primary' : 'info'">
+                  {{ currentSelectionTitle }}
+                </el-tag>
+              </span>
+              <span class="card-header-actions">
+                <el-button size="small" @click="newSelection">
+                  新建选型
+                </el-button>
+                <el-button size="small" :loading="selectionSaving" :disabled="!slots.length" @click="openSaveSelectionDialog">
+                  保存选型
+                </el-button>
+                <el-button size="small" type="primary" @click="addSlot">
+                  添加槽位
+                </el-button>
+              </span>
             </div>
           </template>
         </el-card>
@@ -18,118 +31,126 @@
           <div v-else class="trunking-stack">
             <el-alert v-if="error" :title="error" type="error" show-icon :closable="false" class="summary-error" />
 
-            <template v-for="(slot, index) in slots" :key="slot.id">
-              <div class="trunking-stack-row is-segment">
-                <button
-                  v-if="getHorizontalSegment(index)"
-                  type="button"
-                  class="segment-name"
-                  :class="getHorizontalSegment(index)?.resultStatus"
-                  @click="openSegmentDetail(getHorizontalSegment(index)!)"
-                >
-                  <strong>{{ getHorizontalSegment(index)?.name }}</strong>
-                  <small>{{ getSegmentTrunkingSummary(getHorizontalSegment(index)!) }}</small>
-                  <span class="segment-inline-actions">
-                    <span>管线面积 {{ getResultAreaText(getHorizontalSegment(index)!) }} mm²</span>
-                  </span>
-                </button>
-              </div>
-
-              <div class="slot-layout-row">
-                <button
-                  v-if="getSideSection(index, 'left')"
-                  type="button"
-                  class="segment-side"
-                  :class="getSideSection(index, 'left')?.resultStatus"
-                  @click="openDetail({ key: `${getSideSlot(index)?.id}-left`, slot: getSideSlot(index)!, section: getSideSection(index, 'left')! })"
-                >
-                  <span>左</span>
-                  <strong>{{ getSideSection(index, 'left')?.selectedTrunking?.model || '-' }}</strong>
-                  <small>{{ getSideSection(index, 'left')?.selectedTrunking ? `${(getSideSection(index, 'left')!.actualFillRatio * 100).toFixed(1)}%` : getSideSection(index, 'left')?.resultMessage }}</small>
-                  <em>管线面积 {{ getSideAreaText(index, 'left') }} mm²</em>
-                </button>
-
-                <el-card shadow="never" class="slot-card">
-                  <template #header>
-                    <div class="slot-header">
-                      <el-input v-model="slot.name" class="slot-name-input" :placeholder="`槽位${index + 1}`" />
-                      <el-button link type="danger" @click="removeSlot(slot.id)">删除</el-button>
-                    </div>
-                  </template>
-                  <div class="slot-section">
-                    <div class="section-title">
-                      <span>管线清单</span>
-                      <el-button size="small" @click="openSlotPipePicker(slot.id)">添加管线</el-button>
-                    </div>
-                    <el-table :data="createSlotCombinedRows(slot)" size="small" border max-height="260" empty-text="暂无管线">
-                      <el-table-column prop="name" label="管线" min-width="170" show-overflow-tooltip>
-                        <template #default="{ row: pipeRow }">
-                          <span class="pipe-name-cell">
-                            <span>{{ pipeRow.name }}</span>
-                            <el-button
-                              v-if="pipeRow.canExpand"
-                              link
-                              size="small"
-                              type="primary"
-                              @click="openPipeDetail(pipeRow)"
-                            >
-                              明细
-                            </el-button>
-                          </span>
-                        </template>
-                      </el-table-column>
-                      <el-table-column prop="qty" label="数量" width="92" align="center">
-                        <template #default="{ row: pipeRow }">
-                          <el-input-number
-                            class="pipe-qty-input"
-                            :model-value="pipeRow.qty"
-                            :min="0"
-                            :step="1"
-                            size="small"
-                            controls-position="right"
-                            @update:model-value="(value: number | undefined) => updateSlotLayerPipeQty(slot.id, pipeRow.sectionKey, pipeRow.sourceIndex, Number(value || 0))"
-                          />
-                        </template>
-                      </el-table-column>
-                      <el-table-column prop="sideLabel" label="分侧" width="78" align="center" />
-                      <el-table-column prop="areaText" label="面积" width="96" align="right" />
-                      <el-table-column width="58" align="center">
-                        <template #default="{ row: pipeRow }">
-                          <el-button link type="danger" @click="removeSlotLayerPipe(slot.id, pipeRow.sectionKey, pipeRow.sourceIndex)">删</el-button>
-                        </template>
-                      </el-table-column>
-                    </el-table>
-                  </div>
-                </el-card>
-
-                <button
-                  v-if="getSideSection(index, 'right')"
-                  type="button"
-                  class="segment-side"
-                  :class="getSideSection(index, 'right')?.resultStatus"
-                  @click="openDetail({ key: `${getSideSlot(index)?.id}-right`, slot: getSideSlot(index)!, section: getSideSection(index, 'right')! })"
-                >
-                  <span>右</span>
-                  <strong>{{ getSideSection(index, 'right')?.selectedTrunking?.model || '-' }}</strong>
-                  <small>{{ getSideSection(index, 'right')?.selectedTrunking ? `${(getSideSection(index, 'right')!.actualFillRatio * 100).toFixed(1)}%` : getSideSection(index, 'right')?.resultMessage }}</small>
-                  <em>管线面积 {{ getSideAreaText(index, 'right') }} mm²</em>
-                </button>
-              </div>
-            </template>
-
-            <div class="trunking-stack-row is-segment">
+            <div class="vertical-slot-layout">
               <button
-                v-if="getHorizontalSegment(slots.length)"
+                v-if="getVerticalSideSection('left')"
                 type="button"
-                class="segment-name"
-                :class="getHorizontalSegment(slots.length)?.resultStatus"
-                @click="openSegmentDetail(getHorizontalSegment(slots.length)!)"
+                class="segment-side is-vertical"
+                :class="getVerticalSideSection('left')?.resultStatus"
+                @click="openVerticalSideDetail('left')"
               >
-                <strong>{{ getHorizontalSegment(slots.length)?.name }}</strong>
-                <small>{{ getSegmentTrunkingSummary(getHorizontalSegment(slots.length)!) }}</small>
-                <span class="segment-inline-actions">
-                  <span>管线面积 {{ getResultAreaText(getHorizontalSegment(slots.length)!) }} mm²</span>
-                </span>
+                <span>左</span>
+                <strong>{{ getVerticalSideSection('left')?.selectedTrunking?.model || '-' }}</strong>
+                <small>{{ getVerticalSideSection('left')?.selectedTrunking ? `${(getVerticalSideSection('left')!.actualFillRatio * 100).toFixed(1)}%` : getVerticalSideSection('left')?.resultMessage }}</small>
+                <em>弱电面积 {{ getVerticalSideAreaText('left') }} mm²</em>
+              </button>
+
+              <div class="trunking-center-stack">
+                <template v-for="(slot, index) in displaySlots" :key="slot.id">
+                  <div class="trunking-stack-row is-segment">
+                    <button
+                      v-if="getHorizontalSegment(index)"
+                      type="button"
+                      class="segment-name"
+                      :class="getHorizontalSegment(index)?.resultStatus"
+                      @click="openSegmentDetail(getHorizontalSegment(index)!)"
+                    >
+                      <strong>{{ getHorizontalSegment(index)?.name }}</strong>
+                      <small>{{ getSegmentTrunkingSummary(getHorizontalSegment(index)!) }}</small>
+                      <span class="segment-inline-actions">
+                        <span>管线面积 {{ getResultAreaText(getHorizontalSegment(index)!) }} mm²</span>
+                      </span>
+                    </button>
+                  </div>
+
+                  <div class="slot-layout-row">
+                    <el-card shadow="never" class="slot-card">
+                      <template #header>
+                        <div class="slot-header">
+                          <el-input v-model="slot.name" class="slot-name-input" :placeholder="`槽位${index + 1}`" />
+                          <el-button link type="danger" @click="removeSlot(slot.id)">删除</el-button>
+                        </div>
+                      </template>
+                      <div class="slot-section">
+                        <div class="section-title">
+                          <span>管线清单</span>
+                          <span class="area-summary is-muted">{{ getSlotPipeCount(slot) }} 项</span>
+                          <el-button size="small" text @click="toggleSlotPipeList(slot.id)">
+                            {{ isSlotPipeListExpanded(slot.id) ? '收起' : '展开' }}
+                          </el-button>
+                          <el-button size="small" :loading="pipeSourceRefreshing" @click="openSlotPipePicker(slot.id)">添加管线</el-button>
+                        </div>
+                        <el-table v-if="isSlotPipeListExpanded(slot.id)" :data="createSlotCombinedRows(slot)" size="small" border max-height="260" empty-text="暂无管线">
+                          <el-table-column prop="name" label="管线" min-width="170" show-overflow-tooltip>
+                            <template #default="{ row: pipeRow }">
+                              <span class="pipe-name-cell">
+                                <span>{{ pipeRow.name }}</span>
+                                <el-button
+                                  v-if="pipeRow.canExpand"
+                                  link
+                                  size="small"
+                                  type="primary"
+                                  @click="openPipeDetail(pipeRow)"
+                                >
+                                  明细
+                                </el-button>
+                              </span>
+                            </template>
+                          </el-table-column>
+                          <el-table-column prop="qty" label="数量" width="92" align="center">
+                            <template #default="{ row: pipeRow }">
+                              <el-input-number
+                                class="pipe-qty-input"
+                                :model-value="pipeRow.qty"
+                                :min="0"
+                                :step="1"
+                                size="small"
+                                controls-position="right"
+                                @update:model-value="(value: number | undefined) => updateSlotLayerPipeQty(slot.id, pipeRow.sectionKey, pipeRow.sourceIndex, Number(value || 0))"
+                              />
+                            </template>
+                          </el-table-column>
+                          <el-table-column prop="sideLabel" label="分侧" width="78" align="center" />
+                          <el-table-column prop="areaText" label="面积" width="96" align="right" />
+                          <el-table-column width="58" align="center">
+                            <template #default="{ row: pipeRow }">
+                              <el-button link type="danger" @click="removeSlotLayerPipe(slot.id, pipeRow.sectionKey, pipeRow.sourceIndex)">删</el-button>
+                            </template>
+                          </el-table-column>
+                        </el-table>
+                      </div>
+                    </el-card>
+                  </div>
+                </template>
+
+                <div class="trunking-stack-row is-segment">
+                  <button
+                    v-if="getHorizontalSegment(slots.length)"
+                    type="button"
+                    class="segment-name"
+                    :class="getHorizontalSegment(slots.length)?.resultStatus"
+                    @click="openSegmentDetail(getHorizontalSegment(slots.length)!)"
+                  >
+                    <strong>{{ getHorizontalSegment(slots.length)?.name }}</strong>
+                    <small>{{ getSegmentTrunkingSummary(getHorizontalSegment(slots.length)!) }}</small>
+                    <span class="segment-inline-actions">
+                      <span>管线面积 {{ getResultAreaText(getHorizontalSegment(slots.length)!) }} mm²</span>
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              <button
+                v-if="getVerticalSideSection('right')"
+                type="button"
+                class="segment-side is-vertical"
+                :class="getVerticalSideSection('right')?.resultStatus"
+                @click="openVerticalSideDetail('right')"
+              >
+                <span>右</span>
+                <strong>{{ getVerticalSideSection('right')?.selectedTrunking?.model || '-' }}</strong>
+                <small>{{ getVerticalSideSection('right')?.selectedTrunking ? `${(getVerticalSideSection('right')!.actualFillRatio * 100).toFixed(1)}%` : getVerticalSideSection('right')?.resultMessage }}</small>
+                <em>强电面积 {{ getVerticalSideAreaText('right') }} mm²</em>
               </button>
             </div>
           </div>
@@ -195,11 +216,31 @@
         <el-table-column prop="areaText" label="面积" width="96" align="right" />
       </el-table>
     </el-dialog>
+
+    <el-dialog v-model="saveDialogVisible" title="保存选型" width="min(420px, calc(100vw - 24px))">
+      <el-form label-width="84px" @submit.prevent>
+        <el-form-item label="选型名称" required>
+          <el-input
+            v-model="saveSelectionName"
+            maxlength="60"
+            show-word-limit
+            placeholder="请输入保存名称"
+            @keyup.enter="saveCurrentSelection"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="saveDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="selectionSaving" @click="saveCurrentSelection">保存</el-button>
+      </template>
+    </el-dialog>
   </PageShell>
 </template>
 
 <script setup lang="ts">
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { ElMessage } from 'element-plus';
 import AddPipeDialog from '../components/AddPipeDialog.vue';
 import MetricItem from '../widgets/MetricItem.vue';
 import PageShell from '../components/PageShell.vue';
@@ -207,12 +248,14 @@ import { trunkingApi } from '../api/trunking';
 import { usePipeLibrary } from '../composables/usePipeLibrary';
 import { usePipeComponents } from '../composables/usePipeComponents';
 import { usePipeModules } from '../composables/usePipeModules';
-import type { ActivePipe, PipeType, TrunkingCalcResponse, TrunkingSideResult, TrunkingSlotRequest, TrunkingSlotResult } from '../types';
+import type { ActivePipe, PipeType, TrunkingCalcRequest, TrunkingCalcResponse, TrunkingSavedSelection, TrunkingSideResult, TrunkingSlotRequest, TrunkingSlotResult } from '../types';
 import { expandSelectionToPipes } from '../utils/pipeSelection';
 import { getPipeDisplayType } from '../utils/pipeType';
 import { createTrunkingSelectionRows, summarizeTrunkingSelectionRows, type TrunkingSelectionDetailRow, type TrunkingSelectionRow } from '../utils/trunkingSelectionDisplay';
+import { getSlotsTopToBottom, renumberDefaultSlots } from '../utils/trunkingSlotOrdering';
 import { getTrunkingRuntimeState, setTrunkingRuntimeState, type LocalSlot } from '../stores/trunkingRuntimeState';
 import { getOrderedSegmentLayerRefs, type OrderedSegmentLayerRef } from '../utils/trunkingSegmentLayers';
+import { getRequestSlotsBottomToTop } from '../utils/trunkingSavedSelectionSlots';
 
 interface SummaryItem {
   key: string;
@@ -225,6 +268,8 @@ const TRUNKING_ALLOWED_TYPES = ['weak_cable', 'strong_cable', 'encoder'];
 const { pipeLib, loadPipeLib } = usePipeLibrary();
 const { pipeModules, loadPipeModules } = usePipeModules();
 const { pipeComponents, loadPipeComponents } = usePipeComponents();
+const route = useRoute();
+const router = useRouter();
 const slots = ref<LocalSlot[]>([]);
 const result = ref<TrunkingCalcResponse | null>(null);
 const loading = ref(false);
@@ -232,6 +277,8 @@ const error = ref('');
 const workspaceSaving = ref(false);
 const workspaceSaved = ref(false);
 const showAddDialog = ref(false);
+const pipeSourceRefreshing = ref(false);
+const selectionSaving = ref(false);
 const nextSlotNumber = ref(1);
 const pickerTarget = reactive<{ slotId: string; sectionKey: 'top' | 'bottom' }>({ slotId: '', sectionKey: 'top' });
 const detailVisible = ref(false);
@@ -239,6 +286,13 @@ const detailItem = ref<SummaryItem | null>(null);
 const mounted = ref(false);
 const pipeDetailVisible = ref(false);
 const pipeDetailItem = ref<TrunkingSelectionRow | null>(null);
+const expandedSlotIds = ref<Set<string>>(new Set());
+const loadedSavedId = ref('');
+const loadedSavedName = ref('');
+const saveDialogVisible = ref(false);
+const saveSelectionName = ref('线槽选型');
+const currentSelectionTitle = computed(() => loadedSavedName.value || '新建选型');
+const displaySlots = computed(() => getSlotsTopToBottom(slots.value));
 
 function isTrunkingPipe(pipe?: Pick<PipeType, 'name' | 'type'> | null) {
   return pipe ? TRUNKING_ALLOWED_TYPES.includes(getPipeDisplayType(pipe)) : false;
@@ -273,6 +327,19 @@ function addSlot() {
   queueCalculate();
 }
 
+function newSelection() {
+  loadedSavedId.value = '';
+  loadedSavedName.value = '';
+  saveSelectionName.value = '线槽选型';
+  expandedSlotIds.value = new Set();
+  nextSlotNumber.value = 2;
+  slots.value = [createSlot('槽位1')];
+  result.value = null;
+  error.value = '';
+  saveWorkspace();
+  queueCalculate();
+}
+
 function createSlot(name: string): LocalSlot {
   return {
     id: `slot-${Date.now()}-${Math.random().toString(16).slice(2)}`,
@@ -295,13 +362,19 @@ function formatFillRatio(value: number | null | undefined) {
 }
 
 function removeSlot(slotId: string) {
-  slots.value = slots.value.filter(slot => slot.id !== slotId);
+  slots.value = renumberDefaultSlots(slots.value.filter(slot => slot.id !== slotId));
+  const nextExpanded = new Set(expandedSlotIds.value);
+  nextExpanded.delete(slotId);
+  expandedSlotIds.value = nextExpanded;
+  nextSlotNumber.value = getNextSlotNumber(slots.value);
   queueCalculate();
 }
 
-function openPipePicker(slotId: string, sectionKey: 'top' | 'bottom') {
+async function openPipePicker(slotId: string, sectionKey: 'top' | 'bottom') {
   pickerTarget.slotId = slotId;
   pickerTarget.sectionKey = sectionKey;
+  expandSlotPipeList(slotId);
+  if (!await refreshPipeSourcesForPicker()) return;
   showAddDialog.value = true;
 }
 
@@ -349,7 +422,7 @@ type SlotCombinedSelectionRow = TrunkingSelectionRow & {
 };
 
 function getSegmentLayerRefs(segmentIndex: number) {
-  return getOrderedSegmentLayerRefs(slots.value, segmentIndex);
+  return getOrderedSegmentLayerRefs(displaySlots.value, segmentIndex);
 }
 
 function getLayerRefLabel(layerRef: OrderedSegmentLayerRef) {
@@ -360,16 +433,23 @@ function getHorizontalSegment(index: number) {
   return result.value?.slots[index] || null;
 }
 
-function getSideSlot(index: number) {
-  return result.value?.sideSlots[index] || null;
+function getVerticalSideSlot() {
+  return result.value?.sideSlots[0] || null;
 }
 
-function getSideSection(index: number, side: 'left' | 'right') {
-  return getSideSlot(index)?.sections.find(section => section.key.endsWith(`-${side}`)) || null;
+function getVerticalSideSection(side: 'left' | 'right') {
+  return getVerticalSideSlot()?.sections.find((section: TrunkingSideResult) => section.key.endsWith(`-${side}`)) || null;
 }
 
-function getSideAreaText(index: number, side: 'left' | 'right') {
-  return formatAreaText(getSideSection(index, side)?.totalArea || 0);
+function getVerticalSideAreaText(side: 'left' | 'right') {
+  return formatAreaText(getVerticalSideSection(side)?.totalArea || 0);
+}
+
+function openVerticalSideDetail(side: 'left' | 'right') {
+  const slot = getVerticalSideSlot();
+  const section = getVerticalSideSection(side);
+  if (!slot || !section) return;
+  openDetail({ key: `${slot.id}-${side}`, slot, section });
 }
 
 function getDetailTitle(item: SummaryItem) {
@@ -378,7 +458,7 @@ function getDetailTitle(item: SummaryItem) {
 }
 
 function openSegmentDetail(segment: TrunkingSlotResult) {
-  const section = segment.sections.find(item => item.selectedTrunking) || segment.sections[0];
+  const section = segment.sections.find((item: TrunkingSideResult) => item.selectedTrunking) || segment.sections[0];
   if (section) openDetail({ key: `${segment.id}-${section.key}`, slot: segment, section });
 }
 
@@ -401,6 +481,25 @@ function createSlotCombinedRows(slot: LocalSlot): SlotCombinedSelectionRow[] {
   );
 }
 
+function isSlotPipeListExpanded(slotId: string) {
+  return expandedSlotIds.value.has(slotId);
+}
+
+function expandSlotPipeList(slotId: string) {
+  expandedSlotIds.value = new Set([...expandedSlotIds.value, slotId]);
+}
+
+function toggleSlotPipeList(slotId: string) {
+  const next = new Set(expandedSlotIds.value);
+  if (next.has(slotId)) next.delete(slotId);
+  else next.add(slotId);
+  expandedSlotIds.value = next;
+}
+
+function getSlotPipeCount(slot: LocalSlot) {
+  return createSlotCombinedRows(slot).length;
+}
+
 function getSegmentAreaSummary(segmentIndex: number) {
   return summarizeTrunkingSelectionRows(createSegmentRows(segmentIndex));
 }
@@ -410,12 +509,12 @@ function getSlotAreaSummary(slot: LocalSlot) {
 }
 
 function getResultAreaText(segment: TrunkingSlotResult) {
-  return formatAreaText(segment.sections.reduce((sum, section) => sum + section.totalArea, 0));
+  return formatAreaText(segment.sections.reduce((sum: number, section: TrunkingSideResult) => sum + section.totalArea, 0));
 }
 
 function getSegmentTrunkingSummary(segment: TrunkingSlotResult) {
   const selectedModels = segment.sections
-    .map(section => section.selectedTrunking?.model)
+    .map((section: TrunkingSideResult) => section.selectedTrunking?.model)
     .filter(Boolean);
   if (selectedModels.length === 0) return '未计算线槽';
   return [...new Set(selectedModels)].join(' / ');
@@ -476,11 +575,7 @@ async function calculate() {
   loading.value = true;
   error.value = '';
   try {
-    result.value = await trunkingApi.calculate({
-      selectedTrunkingId: 0,
-      pipes: [],
-      slots: toRequestSlots()
-    });
+    result.value = await trunkingApi.calculate(createCalcRequest());
   } catch (err) {
     error.value = err instanceof Error ? err.message : '计算失败';
   } finally {
@@ -488,29 +583,148 @@ async function calculate() {
   }
 }
 
+function createCalcRequest(): TrunkingCalcRequest {
+  return {
+    selectedTrunkingId: 0,
+    pipes: [],
+    slotOrder: 'bottomToTop',
+    slots: toRequestSlots()
+  };
+}
+
+function createSavedSourceSlots() {
+  return slots.value.map(slot => ({
+    id: slot.id,
+    name: slot.name,
+    sections: slot.sections.map(section => ({
+      key: section.key,
+      label: section.label,
+      pipes: section.pipes
+    }))
+  }));
+}
+
+function openSaveSelectionDialog() {
+  saveSelectionName.value = loadedSavedName.value || getDefaultSelectionName();
+  saveDialogVisible.value = true;
+}
+
+function getDefaultSelectionName() {
+  const firstSlotName = slots.value[0]?.name?.trim();
+  return firstSlotName ? `${firstSlotName}线槽选型` : '线槽选型';
+}
+
+async function saveCurrentSelection() {
+  if (!slots.value.length) {
+    ElMessage.warning('请先添加槽位');
+    return;
+  }
+
+  const selectionName = saveSelectionName.value.trim();
+  if (!selectionName) {
+    ElMessage.warning('请输入选型名称');
+    return;
+  }
+
+  selectionSaving.value = true;
+  try {
+    const saved = await trunkingApi.saveSelection({
+      id: loadedSavedId.value || undefined,
+      name: selectionName,
+      request: createCalcRequest(),
+      result: result.value,
+      sourceSlots: createSavedSourceSlots()
+    });
+    loadedSavedId.value = saved.id || '';
+    loadedSavedName.value = saved.name || selectionName;
+    result.value = saved.result;
+    saveDialogVisible.value = false;
+    ElMessage.success('选型已保存到数据库');
+  } catch (err) {
+    ElMessage.error(err instanceof Error ? err.message : '保存失败');
+  } finally {
+    selectionSaving.value = false;
+  }
+}
+
 async function refreshPipeSources() {
   await Promise.all([loadPipeLib(), loadPipeModules(), loadPipeComponents()]);
+}
+
+async function refreshPipeSourcesForPicker() {
+  pipeSourceRefreshing.value = true;
+  try {
+    await refreshPipeSources();
+    return true;
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : '管线库加载失败';
+    return false;
+  } finally {
+    pipeSourceRefreshing.value = false;
+  }
 }
 
 function loadWorkspace() {
   const runtimeState = getTrunkingRuntimeState();
   if (!runtimeState) return;
 
-  slots.value = runtimeState.slots.map((slot, index) => ({
-    ...createSlot(slot.name || `槽位${index + 1}`),
-    ...slot,
-    layout: 'ordered',
-    pipes: [],
-    sections: slot.layout === 'ordered'
-      ? slot.sections
-      : slot.layout === 'topBottom'
-      ? slot.sections
-      : [
-          { key: 'top', label: '上层', selectedTrunkingId: null, fillRatio: null, pipes: slot.pipes },
-          { key: 'bottom', label: '下层', selectedTrunkingId: null, fillRatio: null, pipes: [] }
-        ]
-  }));
+  applySlots(runtimeState.slots);
   nextSlotNumber.value = Math.max(runtimeState.nextSlotNumber || 1, getNextSlotNumber(slots.value));
+}
+
+async function loadSavedSelection() {
+  const savedId = typeof route.query.savedId === 'string' ? route.query.savedId : '';
+  const saved = savedId
+    ? await trunkingApi.getSavedSelectionById(savedId)
+    : await trunkingApi.getSavedSelection();
+  if (!saved?.request?.slots?.length) return false;
+
+  applySavedSelection(saved);
+  loadedSavedId.value = saved.id || '';
+  loadedSavedName.value = saved.name || '';
+  return true;
+}
+
+function applySavedSelection(saved: TrunkingSavedSelection) {
+  applySlots(getRequestSlotsBottomToTop(saved.request).map(slot => ({
+    id: slot.id,
+    name: slot.name,
+    layout: slot.layout,
+    leftTrunkingId: slot.leftTrunkingId ?? null,
+    rightTrunkingId: slot.rightTrunkingId ?? null,
+    leftFillRatio: slot.leftFillRatio ?? null,
+    rightFillRatio: slot.rightFillRatio ?? null,
+    pipes: [],
+    sections: (slot.sections || []).map(section => ({
+      key: section.key === 'bottom' ? 'bottom' : 'top',
+      label: section.label,
+      selectedTrunkingId: section.selectedTrunkingId ?? null,
+      fillRatio: section.fillRatio ?? null,
+      pipes: section.pipes.map(pipe => ({ kind: 'pipe' as const, libId: pipe.pipeTypeId, qty: pipe.qty }))
+    }))
+  })));
+  nextSlotNumber.value = getNextSlotNumber(slots.value);
+  result.value = saved.result;
+}
+
+function applySlots(items: Array<Partial<LocalSlot> & { name: string }>) {
+  slots.value = items.map((slot, index) => {
+    const baseSlot = createSlot(slot.name || `槽位${index + 1}`);
+    const sections = slot.layout === 'ordered' || slot.layout === 'topBottom'
+      ? slot.sections || baseSlot.sections
+      : [
+          { key: 'top' as const, label: '上层', selectedTrunkingId: null, fillRatio: null, pipes: slot.pipes || [] },
+          { key: 'bottom' as const, label: '下层', selectedTrunkingId: null, fillRatio: null, pipes: [] }
+        ];
+
+    return {
+      ...baseSlot,
+      ...slot,
+      layout: 'ordered',
+      pipes: [],
+      sections
+    };
+  });
 }
 
 function saveWorkspace() {
@@ -575,7 +789,9 @@ watch(slots, () => {
 
 onMounted(async () => {
   await Promise.all([trunkingApi.getAll(), refreshPipeSources()]);
-  loadWorkspace();
+  if (!await loadSavedSelection()) {
+    loadWorkspace();
+  }
   await calculate();
   mounted.value = true;
 });
@@ -583,6 +799,11 @@ onMounted(async () => {
 onActivated(async () => {
   if (!mounted.value) return;
   await refreshPipeSources();
+  const savedId = typeof route.query.savedId === 'string' ? route.query.savedId : '';
+  if (savedId && savedId !== loadedSavedId.value) {
+    await loadSavedSelection();
+    await router.replace({ path: route.path, query: {} });
+  }
   await calculate();
 });
 </script>

@@ -1,19 +1,64 @@
-const defaultApiBase = import.meta.env.DEV ? 'http://localhost:5256' : '';
-const API_BASE = `${import.meta.env.VITE_API_BASE || defaultApiBase}/api`;
+import { formatToken, getToken } from '@/utils/auth';
+import { handleAuthFailure } from '@/utils/authFailure';
+import { refreshStoredToken } from './auth';
+
+const viteEnv = import.meta.env ?? {};
+const defaultApiBase = viteEnv.DEV ? 'http://localhost:5256' : '';
+const API_BASE = `${viteEnv.VITE_API_BASE || defaultApiBase}/api`;
 
 interface ApiRequestOptions extends RequestInit {
   parseJson?: boolean;
+  _isRetry?: boolean; // 内部标记，避免无限重试
+}
+
+function isAuthenticationEndpoint(path: string) {
+  const normalizedPath = path.split('?', 1)[0].toLowerCase().replace(/\/$/, '');
+  return normalizedPath === '/auth/login' || normalizedPath === '/auth/refresh-token';
 }
 
 async function request<T>(path: string, options?: ApiRequestOptions): Promise<T> {
   const url = `${API_BASE}${path}`;
-  const { parseJson = true, ...fetchOptions } = options || {};
+  const { parseJson = true, _isRetry = false, ...fetchOptions } = options || {};
+  const headers = new Headers(fetchOptions.headers);
+  if (!headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  const token = getToken();
+  if (token?.accessToken && Number(token.expires) > Date.now()) {
+    headers.set('Authorization', formatToken(token.accessToken));
+  }
+
   const res = await fetch(url, {
-    headers: { 'Content-Type': 'application/json' },
-    ...fetchOptions
+    ...fetchOptions,
+    headers
   });
 
   if (!res.ok) {
+    if (res.status === 401) {
+      if (isAuthenticationEndpoint(path)) {
+        throw new Error('认证失败');
+      }
+
+      if (_isRetry) {
+        handleAuthFailure();
+        throw new Error('登录已失效，请重新登录');
+      }
+
+      const currentToken = getToken();
+      if (currentToken?.refreshToken) {
+        try {
+          await refreshStoredToken();
+          return request<T>(path, { ...options, _isRetry: true });
+        } catch {
+          handleAuthFailure();
+          throw new Error('Token 刷新失败，请重新登录');
+        }
+      } else {
+        handleAuthFailure();
+        throw new Error('未登录或登录已过期');
+      }
+    }
     const err = await res.text();
     throw new Error(`API Error ${res.status}: ${err}`);
   }
